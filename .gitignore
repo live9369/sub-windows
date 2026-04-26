@@ -61,6 +61,7 @@ vendor/wechat-decrypt/config.json
 vendor/wechat-decrypt/decrypted/
 vendor/wechat-decrypt/decoded_images/
 vendor/wechat-decrypt/_monitor_cache/
+vendor/wechat-decrypt/all_keys.json
 
 # --- 临时文件 ---
 *.tmp

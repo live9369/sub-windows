@@ -49,20 +49,59 @@ export interface WxRawMessage {
   text?: string
   chat?: string
   room?: string
+  rich?: {
+    type?: string
+    emoji_url?: string
+    image_url?: string
+    thumb_url?: string
+    title?: string
+    desc?: string
+    url?: string
+  }
 }
 
-export function wxToChatMessages(groupName: string, raw: WxRawMessage[]): ChatMessage[] {
+export function wxToChatMessages(groupName: string, raw: WxRawMessage[], baseUrl?: string): ChatMessage[] {
   const groupId = slugify(groupName)
   return raw.map((m, i) => {
     const sender = m.sender ?? m.username ?? '未知'
     const ts = m.timestamp ?? (typeof m.time === 'number' ? m.time : 0)
+
+    let content = m.content ?? m.msg ?? m.text ?? ''
+    let imageUrl: string | undefined
+
+    const rich = m.rich
+    if (rich) {
+      if (rich.type === 'emoji' && rich.emoji_url) {
+        if (!content) content = '[表情]'
+        imageUrl = rich.emoji_url.startsWith('http')
+          ? rich.emoji_url
+          : `${baseUrl ?? ''}${rich.emoji_url}`
+      } else if (rich.type === 'image' && rich.image_url) {
+        if (!content) content = '[图片]'
+        imageUrl = rich.image_url.startsWith('http')
+          ? rich.image_url
+          : `${baseUrl ?? ''}${rich.image_url}`
+      } else if (rich.type === 'link' || rich.type === 'rich') {
+        if (!content) content = `[链接] ${rich.title || rich.desc || ''}`
+      } else if (rich.type === 'quote') {
+        if (!content) content = '[引用回复]'
+      } else if (rich.type === 'file') {
+        if (!content) content = `[文件] ${rich.title || ''}`
+      } else if (rich.type === 'video') {
+        if (!content) content = '[视频]'
+      } else if (!content) {
+        content = `[${rich.type || '富媒体'}]`
+      }
+    }
+
     return {
       id: String(m.id ?? m.msg_id ?? `${groupId}-${ts}-${i}`),
       groupId,
       time: ts ? formatTime(ts) : '--:--:--',
       username: sender,
       avatarColor: avatarColorFor(sender),
-      content: m.content ?? m.msg ?? m.text ?? '',
+      content,
+      imageUrl,
       source: 'wechat',
     }
   })

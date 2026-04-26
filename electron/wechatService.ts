@@ -170,7 +170,10 @@ export class WechatService {
         }
 
         for (const [chatName, chatMsgs] of Object.entries(byChat)) {
-          const batch = wxToChatMessages(chatName, chatMsgs)
+          const batch = wxToChatMessages(chatName, chatMsgs, cfg.baseUrl)
+          // debug: log first message with imageUrl
+          const firstImg = batch.find((m: any) => m.imageUrl)
+          if (firstImg) console.log('[wechat] imageUrl:', firstImg.imageUrl)
           if (this.win && !this.win.isDestroyed()) {
             this.win.webContents.send('wechat:batch', {
               groupId: createWxGroup(chatName).id,

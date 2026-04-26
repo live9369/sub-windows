@@ -20,6 +20,7 @@ export interface ChatMessage {
   username: string
   avatarColor: string
   content: string
+  imageUrl?: string
   isPinned?: boolean
   isHot?: boolean
   source?: 'telegram' | 'wechat'

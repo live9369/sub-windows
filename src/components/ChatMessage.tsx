@@ -240,6 +240,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, query }) => {
           <div className="text-[12.5px] leading-relaxed text-zinc-200 whitespace-pre-wrap break-words">
             <HighlightedText text={message.content} query={query} />
           </div>
+          {message.imageUrl && (
+            <img
+              src={message.imageUrl}
+              alt="msg"
+              className="mt-1.5 max-h-32 rounded-md border border-zinc-800 object-contain"
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none'
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
