@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createWxGroup, wxToChatMessages } from '@/lib/wechatAdapter'
+import { createWxGroup } from '@/lib/wechatAdapter'
 import type { ChatMessage, MonitoredGroup } from '@/types'
 
 type WechatStatus = 'idle' | 'connecting' | 'connected' | 'error'
@@ -7,20 +7,15 @@ type WechatStatus = 'idle' | 'connecting' | 'connected' | 'error'
 export interface UseWechatMessagesOptions {
   enabled: boolean
   baseUrl: string
-  groups: string[]
   pollIntervalMs: number
   pythonPath?: string
   scriptPath?: string
 }
 
 export function useWechatMessages(options: UseWechatMessagesOptions) {
-  const { enabled, baseUrl, groups, pollIntervalMs, pythonPath, scriptPath } = options
+  const { enabled, baseUrl, pollIntervalMs, pythonPath, scriptPath } = options
 
-  const wxGroups = React.useMemo<MonitoredGroup[]>(
-    () => groups.map((name) => createWxGroup(name)),
-    [groups],
-  )
-
+  const [discoveredGroups, setDiscoveredGroups] = React.useState<MonitoredGroup[]>([])
   const [messagesByGroup, setMessagesByGroup] = React.useState<Record<string, ChatMessage[]>>({})
   const [status, setStatus] = React.useState<WechatStatus>('idle')
   const [error, setError] = React.useState<string | null>(null)
@@ -31,22 +26,29 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
     try {
       await window.cssApi!.wechatStart({
         baseUrl,
-        groups,
         pollIntervalMs,
         spawn: pythonPath && scriptPath ? { pythonPath, scriptPath } : undefined,
       })
       setStatus('connected')
+      // Discover groups after successful connection
+      try {
+        const names = (await window.cssApi!.wechatDiscover(baseUrl)) as string[]
+        setDiscoveredGroups(names.map((name) => createWxGroup(name)))
+      } catch (discoverErr: any) {
+        console.warn('[wechat] discover failed:', discoverErr)
+      }
     } catch (err: any) {
       const msg = err?.message || String(err)
       setError(msg)
       setStatus('error')
     }
-  }, [baseUrl, groups, pollIntervalMs, pythonPath, scriptPath])
+  }, [baseUrl, pollIntervalMs, pythonPath, scriptPath])
 
   const stop = React.useCallback(() => {
     window.cssApi!.wechatStop()
     setStatus('idle')
     setError(null)
+    setDiscoveredGroups([])
   }, [])
 
   const retry = React.useCallback(() => {
@@ -70,14 +72,28 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
   React.useEffect(() => {
     if (!enabled) return
     const unsub = window.cssApi!.onWechatMessage((batch) => {
-      const { groupId, messages } = batch as { groupId: string; messages: ChatMessage[] }
+      const { groupId, groupName, messages } = batch as {
+        groupId: string
+        groupName: string
+        messages: ChatMessage[]
+      }
+      setDiscoveredGroups((prev) => {
+        if (prev.some((g) => g.id === groupId)) return prev
+        return [...prev, createWxGroup(groupName)]
+      })
       setMessagesByGroup((prev) => ({
         ...prev,
         [groupId]: [...(prev[groupId] ?? []), ...messages],
       }))
     })
     const unsubStatus = window.cssApi!.onWechatStatusChange((s) => {
-      setStatus(s.state as WechatStatus)
+      const map: Record<string, WechatStatus> = {
+        idle: 'idle',
+        starting: 'connecting',
+        running: 'connected',
+        error: 'error',
+      }
+      setStatus(map[s.state] ?? (s.state as WechatStatus))
       if (s.error) setError(s.error)
     })
     return () => {
@@ -90,18 +106,42 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
   React.useEffect(() => {
     if (!enabled) return
     window.cssApi!.wechatStatus().then((s: any) => {
-      if (s?.state) setStatus(s.state)
+      if (s?.state) {
+        const map: Record<string, WechatStatus> = {
+          idle: 'idle',
+          starting: 'connecting',
+          running: 'connected',
+          error: 'error',
+        }
+        setStatus(map[s.state] ?? (s.state as WechatStatus))
+      }
       if (s?.error) setError(s.error)
     }).catch(() => {})
   }, [enabled])
 
+  const refreshGroups = React.useCallback(async () => {
+    try {
+      const names = (await window.cssApi!.wechatDiscover(baseUrl)) as string[]
+      setDiscoveredGroups((prev) => {
+        const existing = new Set(prev.map((g) => g.id))
+        const added = names
+          .map((name) => createWxGroup(name))
+          .filter((g) => !existing.has(g.id))
+        return [...prev, ...added]
+      })
+    } catch (err: any) {
+      console.warn('[wechat] refreshGroups failed:', err)
+    }
+  }, [baseUrl])
+
   return {
-    groups: wxGroups,
+    discoveredGroups,
     messagesByGroup,
     status,
     error,
     retry,
     start,
     stop,
+    refreshGroups,
   }
 }

@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   wechatEnabled: false,
   wechatBaseUrl: 'http://localhost:5678',
   wechatPythonPath: '',
-  wechatScriptPath: '',
+  wechatScriptPath: 'vendor/wechat-decrypt/main.py',
   wechatGroups: '',
   wechatPollIntervalMs: 3000,
 }
@@ -40,6 +40,9 @@ export default function App() {
   const handleRefresh = () => {
     setRefreshing(true)
     setRefreshTick((n) => n + 1)
+    if (settings.wechatEnabled) {
+      void wechat.refreshGroups()
+    }
     window.setTimeout(() => setRefreshing(false), 700)
   }
 
@@ -51,7 +54,6 @@ export default function App() {
   const wechat = useWechatMessages({
     enabled: settings.wechatEnabled,
     baseUrl: settings.wechatBaseUrl,
-    groups: settings.wechatGroups.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
     pollIntervalMs: settings.wechatPollIntervalMs,
     pythonPath: settings.wechatPythonPath,
     scriptPath: settings.wechatScriptPath,
@@ -74,7 +76,7 @@ export default function App() {
             <LeftPanel
               globalQuery={globalQuery}
               refreshTick={refreshTick}
-              wxGroups={wechat.groups}
+              wxGroups={wechat.discoveredGroups}
               wxMessagesByGroup={wechat.messagesByGroup}
               wxStatus={wechat.status}
               wxError={wechat.error}

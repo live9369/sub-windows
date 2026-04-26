@@ -55,6 +55,13 @@ Thumbs.db
 ehthumbs.db
 desktop.ini
 
+# --- 微信解密敏感数据 ---
+all_keys.json
+vendor/wechat-decrypt/config.json
+vendor/wechat-decrypt/decrypted/
+vendor/wechat-decrypt/decoded_images/
+vendor/wechat-decrypt/_monitor_cache/
+
 # --- 临时文件 ---
 *.tmp
 *.temp

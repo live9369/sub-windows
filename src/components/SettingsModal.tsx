@@ -9,9 +9,8 @@ import {
   Server,
   Terminal,
   FileCode,
-  Users,
-  Play,
   Loader2,
+  Plug,
 } from 'lucide-react'
 import {
   Dialog,
@@ -77,28 +76,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onOpenChange(false)
   }
 
-  const handleStartWechat = async () => {
+  const handleTestConnection = async () => {
     setStarting(true)
     setStartError(null)
     try {
-      const groups = draft.wechatGroups
-        .split(/[,，]/)
-        .map((s) => s.trim())
-        .filter(Boolean)
       await window.cssApi!.wechatStart({
         baseUrl: draft.wechatBaseUrl || 'http://localhost:5678',
-        groups,
         pollIntervalMs: Number(draft.wechatPollIntervalMs) || 3000,
-        spawn:
-          draft.wechatPythonPath && draft.wechatScriptPath
-            ? {
-                pythonPath: draft.wechatPythonPath,
-                scriptPath: draft.wechatScriptPath,
-              }
-            : undefined,
       })
     } catch (err: any) {
-      setStartError(err?.message || '启动失败')
+      setStartError(err?.message || '连接失败')
     } finally {
       setStarting(false)
     }
@@ -225,21 +212,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               hint="wechat-decrypt/main.py"
             >
               <Input
-                placeholder="/path/to/wechat-decrypt/main.py"
+                placeholder="vendor/wechat-decrypt/main.py"
                 value={draft.wechatScriptPath}
                 onChange={(e) => update('wechatScriptPath', e.target.value)}
-              />
-            </FieldRow>
-
-            <FieldRow
-              icon={<Users className="w-3.5 h-3.5" />}
-              label="监控群名称"
-              hint="逗号分隔的微信群名称"
-            >
-              <Input
-                placeholder="Alpha 群, 合约讨论群, …"
-                value={draft.wechatGroups}
-                onChange={(e) => update('wechatGroups', e.target.value)}
               />
             </FieldRow>
 
@@ -264,14 +239,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 variant="outline"
                 className="w-full"
                 disabled={!draft.wechatEnabled || starting}
-                onClick={handleStartWechat}
+                onClick={handleTestConnection}
               >
                 {starting ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
-                  <Play className="w-3.5 h-3.5 mr-1" />
+                  <Plug className="w-3.5 h-3.5 mr-1" />
                 )}
-                {starting ? '启动中…' : '启动微信解密服务'}
+                {starting ? '测试中…' : '测试连接'}
               </Button>
               {startError && (
                 <p className="mt-1.5 text-[11px] text-rose-400">{startError}</p>

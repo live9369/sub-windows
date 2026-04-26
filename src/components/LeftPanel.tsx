@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { MessageSquare, Plus, Inbox, WifiOff, Settings } from 'lucide-react'
 import { GroupCard } from '@/components/GroupCard'
+import { WechatOnboarding } from '@/components/WechatOnboarding'
 import { Popover } from '@/components/ui/popover'
 import { MOCK_GROUPS, MOCK_MESSAGES } from '@/data/mockData'
 import { cn } from '@/lib/utils'
@@ -211,16 +212,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             />
           )
           : activeGroups.length === 0
-            ? (
-              <EmptyGrid
-                sourceTab={sourceTab}
-                wxStatus={wxStatus}
-                wxError={wxError}
-                onAdd={() => setAddOpen(true)}
-                onRetry={onRetryWechat}
-                onOpenSettings={onOpenSettings}
-              />
-            )
+            ? sourceTab === 'wechat'
+              ? (
+                <WechatOnboarding
+                  wxStatus={wxStatus}
+                  wxError={wxError}
+                  onOpenSettings={onOpenSettings}
+                  onRetry={onRetryWechat}
+                />
+              )
+              : (
+                <EmptyGrid
+                  sourceTab={sourceTab}
+                  wxStatus={wxStatus}
+                  wxError={wxError}
+                  onAdd={() => setAddOpen(true)}
+                  onRetry={onRetryWechat}
+                  onOpenSettings={onOpenSettings}
+                />
+              )
             : (
               <div
                 className={cn(
@@ -233,7 +243,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   <GroupCard
                     key={g.id}
                     group={g}
-                    messages={messagesByGroup[g.id]}
+                    messages={messagesByGroup[g.id] ?? []}
                     globalQuery={globalQuery}
                     refreshTick={refreshTick}
                     onFocus={() => enterFocus(g.id)}
@@ -371,7 +381,7 @@ const FocusLayout: React.FC<FocusLayoutProps> = ({
     <div className="flex-1 min-w-0 min-h-0">
       <GroupCard
         group={focused}
-        messages={messagesByGroup[focused.id]}
+        messages={messagesByGroup[focused.id] ?? []}
         globalQuery={globalQuery}
         refreshTick={refreshTick}
         isFocused

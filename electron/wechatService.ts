@@ -1,11 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import type { BrowserWindow } from 'electron'
 import { createWxGroup, wxToChatMessages } from '../src/lib/wechatAdapter'
-import type { MonitoredGroup } from '../src/types'
 
 export interface WechatServiceConfig {
   baseUrl: string
-  groups: string[]
   pollIntervalMs: number
   spawn?: {
     pythonPath: string
@@ -41,9 +39,8 @@ export class WechatService {
   private timer: NodeJS.Timeout | null = null
   private running = false
   private state: WechatServiceState = { state: 'idle' }
-  private lastTimestamps: Record<string, number> = {}
+  private lastTimestamp = 0
   private win: BrowserWindow | null = null
-  private groups: string[] = []
 
   attachWindow(win: BrowserWindow) {
     this.win = win
@@ -54,14 +51,29 @@ export class WechatService {
   }
 
   private emitState() {
-    this.win?.webContents.send('wechat:status', this.state)
+    if (!this.win || this.win.isDestroyed()) return
+    this.win.webContents.send('wechat:status', this.state)
+  }
+
+  async discover(baseUrl: string): Promise<string[]> {
+    const res = await fetch(`${baseUrl}/api/history?limit=200`, {
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) throw new Error('无法获取群聊列表')
+    const json = (await res.json()) as any
+    const msgs: any[] = json.messages ?? json ?? []
+    const names = new Set<string>()
+    for (const m of msgs) {
+      const chat = m.chat ?? m.room ?? m.group ?? m.chat_name ?? ''
+      if (chat && typeof chat === 'string') names.add(chat)
+    }
+    return Array.from(names).sort()
   }
 
   async start(cfg: WechatServiceConfig) {
     if (this.running) {
       this.stop()
     }
-    this.groups = cfg.groups
     this.setState({ state: 'starting' })
 
     const health = await this.healthCheck(cfg.baseUrl)
@@ -83,7 +95,6 @@ export class WechatService {
           }
         })
 
-        // 等待端口就绪（最长 10 秒）
         let ready = false
         for (let i = 0; i < 20; i++) {
           if (await this.healthCheck(cfg.baseUrl)) {
@@ -113,6 +124,7 @@ export class WechatService {
 
   stop() {
     this.running = false
+    this.lastTimestamp = 0
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
@@ -136,28 +148,43 @@ export class WechatService {
   private async poll(cfg: WechatServiceConfig) {
     if (!this.running) return
 
-    for (const name of cfg.groups) {
-      try {
-        const since = this.lastTimestamps[name] ?? 0
-        const url = `${cfg.baseUrl}/api/history?chat=${encodeURIComponent(name)}&since=${since}&limit=200`
-        const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
-        if (!res.ok) continue
-        const json = await res.json() as any
-        const msgs: any[] = json.messages ?? json ?? []
-        if (msgs.length) {
-          const batch = wxToChatMessages(name, msgs)
-          this.win?.webContents.send('wechat:batch', {
-            groupId: createWxGroup(name).id,
-            groupName: name,
-            messages: batch,
-          })
-          const maxTs = Math.max(...msgs.map((m) => Number(m.timestamp ?? m.time ?? 0)))
-          if (maxTs > 0) this.lastTimestamps[name] = maxTs
-        }
-      } catch (err) {
-        // 单群轮询失败不中断整体服务
-        console.error(`[wechat] poll error for ${name}:`, err)
+    try {
+      const since = this.lastTimestamp
+      const url = `${cfg.baseUrl}/api/history?since=${since}&limit=200`
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+      if (!res.ok) {
+        console.error('[wechat] poll non-ok', res.status)
+        if (this.running) this.timer = setTimeout(() => this.poll(cfg), cfg.pollIntervalMs)
+        return
       }
+      const json = (await res.json()) as any
+      const msgs: any[] = json.messages ?? json ?? []
+
+      if (msgs.length) {
+        const byChat: Record<string, any[]> = {}
+        for (const m of msgs) {
+          const chat = m.chat ?? m.room ?? m.group ?? m.chat_name ?? ''
+          if (!chat || typeof chat !== 'string') continue
+          if (!byChat[chat]) byChat[chat] = []
+          byChat[chat].push(m)
+        }
+
+        for (const [chatName, chatMsgs] of Object.entries(byChat)) {
+          const batch = wxToChatMessages(chatName, chatMsgs)
+          if (this.win && !this.win.isDestroyed()) {
+            this.win.webContents.send('wechat:batch', {
+              groupId: createWxGroup(chatName).id,
+              groupName: chatName,
+              messages: batch,
+            })
+          }
+        }
+
+        const maxTs = Math.max(...msgs.map((m) => Number(m.timestamp ?? m.time ?? 0)))
+        if (maxTs > 0) this.lastTimestamp = maxTs
+      }
+    } catch (err) {
+      console.error('[wechat] poll error:', err)
     }
 
     if (this.running) {

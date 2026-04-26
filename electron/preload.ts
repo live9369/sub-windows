@@ -14,6 +14,7 @@ const api = {
   wechatStart: (cfg: unknown) => ipcRenderer.invoke('wechat:start', cfg),
   wechatStop: () => ipcRenderer.invoke('wechat:stop'),
   wechatStatus: () => ipcRenderer.invoke('wechat:status'),
+  wechatDiscover: (baseUrl: string) => ipcRenderer.invoke('wechat:discover', baseUrl),
 
   // Wechat event subscriptions
   onWechatMessage: (cb: (data: { groupId: string; groupName: string; messages: unknown[] }) => void) => {

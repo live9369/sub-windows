@@ -14,7 +14,8 @@
     "electron:dist:mac": "npm run build && electron-builder --mac",
     "electron:dist:win": "npm run build && electron-builder --win",
     "lint": "tsc -b --noEmit",
-    "wechat:start": "echo '请在外部终端运行: cd /path/to/wechat-decrypt && python main.py (需要管理员/root)'",
+    "wechat:install": "cd vendor/wechat-decrypt && pip install -r requirements.txt",
+    "wechat:start": "cd vendor/wechat-decrypt && python main.py",
     "dev:all": "concurrently \"npm run dev\" \"npm run wechat:start\""
   },
   "dependencies": {

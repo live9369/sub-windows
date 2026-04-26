@@ -109,33 +109,29 @@ ipcMain.handle('wechat:stop', () => {
 ipcMain.handle('wechat:status', () => {
   return wechatService.getState()
 })
+ipcMain.handle('wechat:discover', async (_evt, baseUrl: string) => {
+  return wechatService.discover(baseUrl)
+})
 
 app.whenReady().then(() => {
   createWindow()
 
-  // Auto-start wechat service if enabled in saved settings
+  // Auto-start wechat service if enabled in saved settings (no groups required now)
   const settings = loadSettings()
-  if (settings?.wechatEnabled && Array.isArray(settings.wechatGroups?.split)) {
-    const groups = String(settings.wechatGroups)
-      .split(/[,，]/)
-      .map((s: string) => s.trim())
-      .filter(Boolean)
-    if (groups.length > 0) {
-      wechatService
-        .start({
-          baseUrl: settings.wechatBaseUrl || 'http://localhost:5678',
-          groups,
-          pollIntervalMs: Number(settings.wechatPollIntervalMs) || 3000,
-          spawn:
-            settings.wechatPythonPath && settings.wechatScriptPath
-              ? {
-                  pythonPath: settings.wechatPythonPath,
-                  scriptPath: settings.wechatScriptPath,
-                }
-              : undefined,
-        })
-        .catch((err) => console.error('[main] auto-start wechat failed:', err))
-    }
+  if (settings?.wechatEnabled) {
+    wechatService
+      .start({
+        baseUrl: settings.wechatBaseUrl || 'http://localhost:5678',
+        pollIntervalMs: Number(settings.wechatPollIntervalMs) || 3000,
+        spawn:
+          settings.wechatPythonPath && settings.wechatScriptPath
+            ? {
+                pythonPath: settings.wechatPythonPath,
+                scriptPath: settings.wechatScriptPath,
+              }
+            : undefined,
+      })
+      .catch((err) => console.error('[main] auto-start wechat failed:', err))
   }
 })
 

@@ -66,10 +66,18 @@
 ## 本地运行
 
 ```bash
-# 1. 安装依赖
+# 1. 克隆仓库（含子模块）
+git clone --recursive <repo-url>
+# 若已克隆但未拉子模块：
+# git submodule update --init --recursive
+
+# 2. 安装前端依赖
 npm install
 
-# 2. 启动开发模式（Electron 窗口 + 热重载）
+# 3. 安装微信解密依赖（Python）
+npm run wechat:install
+
+# 4. 启动开发模式（Electron 窗口 + 热重载）
 npm run dev
 ```
 
@@ -107,6 +115,8 @@ crypto-side-screen/
 │   ├── preload.ts               # 预加载脚本（暴露 cssApi + wechat + settings API）
 │   ├── wechatService.ts         # 微信解密服务管理（探测/spawn/轮询/IPC 推送）
 │   └── electron-env.d.ts
+├── vendor/
+│   └── wechat-decrypt/          # Git 子模块：ylytdeng/wechat-decrypt
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx                  # 根布局：TopBar + SplitPane + StatusBar + Settings + Wechat hook
@@ -188,15 +198,14 @@ crypto-side-screen/
 - **离线空态**：微信服务未连接时，卡片显示「微信服务未连接」+ 重试 / 打开设置按钮。
 - **设置持久化**：所有配置自动保存到 `app.getPath('userData')/app-settings.json`，重启后恢复。
 
-### 安装 wechat-decrypt
+### 安装 wechat-decrypt（已作为子模块）
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/ylytdeng/wechat-decrypt.git
-cd wechat-decrypt
+# 拉取子模块（如果克隆时没加 --recursive）
+git submodule update --init --recursive
 
-# 2. 安装依赖
-pip install -r requirements.txt
+# 安装 Python 依赖
+npm run wechat:install
 ```
 
 ### 平台差异与权限
@@ -213,35 +222,32 @@ pip install -r requirements.txt
 
 终端 1：
 ```bash
-cd /path/to/wechat-decrypt
-python main.py        # 管理员 / root
+npm run wechat:start        # 等价于 cd vendor/wechat-decrypt && python main.py（需要管理员 / root）
 ```
 
 终端 2：
 ```bash
-cd /path/to/crypto-side-screen
 npm run dev
 ```
 
-Electron 启动后会自动探测 `localhost:5678`；若可达则开始轮询配置的微信群。
+Electron 启动后会自动探测 `localhost:5678`；若可达则自动发现群聊并显示在「加卡片」弹层。
 
 **方案 B：一键 concurrently（可选）**
 
 ```bash
-npm install -g concurrently   # 或已包含在 devDeps
-# 编辑 package.json 中的 wechat:start 脚本指向你的 wechat-decrypt 路径
-npm run dev:all
+npm run dev:all            # 同时启动 Electron + wechat-decrypt（需要管理员 / root）
 ```
 
 ### 配置
 
 1. 打开应用 → 设置（⚙️）
 2. 开启「启用微信监控」
-3. 填写「监控群名称」（逗号分隔，如：`Alpha 群, 合约讨论群`）
-4. （可选）修改服务地址 / Python 路径 / 脚本路径
-5. 保存
-6. 若使用外部模式：确保 `python main.py` 已在运行
-7. 若使用 spawn 模式：点击「启动微信解密服务」
+3. （可选）修改服务地址 / Python 路径 / 脚本路径
+   - 脚本路径默认已指向 `vendor/wechat-decrypt/main.py`
+4. 保存
+5. 若使用外部模式：确保 `python main.py` 已在运行
+6. 若使用 spawn 模式：点击「启动微信解密服务」
+7. 服务连接成功后，切换到「WX」Tab → 点击「加卡片」→ 选择自动发现的微信群加入网格
 
 ---
 
