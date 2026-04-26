@@ -1,10 +1,10 @@
-import type { ChatMessage, FeedItem, TelegramGroup } from '@/types'
+import type { ChatMessage, FeedItem, MonitoredGroup } from '@/types'
 
 /* -----------------------------------------------------------------
  * Telegram 群
  * ----------------------------------------------------------------- */
 
-export const MOCK_GROUPS: TelegramGroup[] = [
+export const MOCK_GROUPS: MonitoredGroup[] = [
   {
     id: 'alpha-calls',
     name: 'Alpha Calls',
@@ -12,6 +12,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: '高质量 alpha 信号 / 早期项目',
     members: 3242,
     unread: 12,
+    source: 'telegram',
   },
   {
     id: 'solana-gems',
@@ -20,6 +21,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: 'Solana 链上低市值 gem',
     members: 5887,
     unread: 4,
+    source: 'telegram',
   },
   {
     id: 'meme-snipers',
@@ -28,6 +30,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: 'Meme 抢跑 / pump.fun 监控',
     members: 8924,
     unread: 27,
+    source: 'telegram',
   },
   {
     id: '100x-calls',
@@ -36,6 +39,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: '高倍数信号 / 长线持有',
     members: 2105,
     unread: 0,
+    source: 'telegram',
   },
   {
     id: 'eth-gems',
@@ -44,6 +48,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: 'Ethereum 链上低市值 / 早期项目',
     members: 4421,
     unread: 6,
+    source: 'telegram',
   },
   {
     id: 'pumpfun-live',
@@ -52,6 +57,7 @@ export const MOCK_GROUPS: TelegramGroup[] = [
     description: 'pump.fun 实时新盘 + bonding curve 监控',
     members: 12380,
     unread: 41,
+    source: 'telegram',
   },
 ]
 

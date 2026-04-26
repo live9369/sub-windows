@@ -13,7 +13,9 @@
     "electron:dist": "npm run build && electron-builder",
     "electron:dist:mac": "npm run build && electron-builder --mac",
     "electron:dist:win": "npm run build && electron-builder --win",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b --noEmit",
+    "wechat:start": "echo '请在外部终端运行: cd /path/to/wechat-decrypt && python main.py (需要管理员/root)'",
+    "dev:all": "concurrently \"npm run dev\" \"npm run wechat:start\""
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -33,6 +35,7 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
+    "concurrently": "^9.0.0",
     "vite-plugin-electron": "^0.28.8",
     "vite-plugin-electron-renderer": "^0.14.6"
   },

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Filter, Inbox } from 'lucide-react'
+import { Filter, Inbox, WifiOff } from 'lucide-react'
 import { CardTrafficLights } from '@/components/CardTrafficLights'
 import { ChatMessage } from '@/components/ChatMessage'
 import {
@@ -16,10 +16,10 @@ import {
   matchKeywords,
   parseMarketCap,
 } from '@/lib/utils'
-import type { ChatMessage as ChatMsg, FilterState, TelegramGroup } from '@/types'
+import type { ChatMessage as ChatMsg, FilterState, MonitoredGroup } from '@/types'
 
 export interface GroupCardProps {
-  group: TelegramGroup
+  group: MonitoredGroup
   messages: ChatMsg[]
   globalQuery?: string
   refreshTick?: number
@@ -32,6 +32,8 @@ export interface GroupCardProps {
   /** 在网格模式下调用，从面板移除该卡片。 */
   onRemove?: () => void
   className?: string
+  offline?: boolean
+  offlineActions?: { label: string; onClick: () => void }[]
 }
 
 export const GroupCard: React.FC<GroupCardProps> = ({
@@ -44,6 +46,8 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   onExitFocus,
   onRemove,
   className,
+  offline,
+  offlineActions,
 }) => {
   const [filter, setFilter] = React.useState<FilterState>(DEFAULT_FILTER)
   const [filterOpen, setFilterOpen] = React.useState(false)
@@ -154,6 +158,11 @@ export const GroupCard: React.FC<GroupCardProps> = ({
               {group.unread}
             </Badge>
           )}
+          {group.source === 'wechat' && (
+            <Badge variant="muted" className="h-4 px-1 text-[9px]">
+              WX
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
@@ -190,11 +199,13 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           ref={scrollRef}
           className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-900/80"
         >
-          {filtered.length === 0
-            ? <EmptyState />
-            : filtered.map((m) => (
-              <ChatMessage key={m.id} message={m} query={globalQuery} />
-            ))}
+          {offline
+            ? <OfflineState actions={offlineActions} />
+            : filtered.length === 0
+              ? <EmptyState />
+              : filtered.map((m) => (
+                <ChatMessage key={m.id} message={m} query={globalQuery} />
+              ))}
         </div>
       )}
 
@@ -221,5 +232,28 @@ const EmptyState: React.FC = () => (
     <p className="text-[10px] text-zinc-600 mt-0.5">
       调整过滤条件或清空关键词
     </p>
+  </div>
+)
+
+const OfflineState: React.FC<{ actions?: { label: string; onClick?: () => void }[] }> = ({ actions }) => (
+  <div className="flex flex-col items-center justify-center h-full p-6 text-center text-zinc-500">
+    <WifiOff className="w-6 h-6 mb-1.5 text-zinc-600" />
+    <p className="text-[11px]">微信服务未连接</p>
+    <p className="text-[10px] text-zinc-600 mt-0.5">
+      检查设置中的服务配置或在外部终端启动 python main.py
+    </p>
+    {actions && actions.length > 0 && (
+      <div className="flex items-center gap-2 mt-3">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            onClick={a.onClick}
+            className="px-2 py-1 rounded text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+    )}
   </div>
 )

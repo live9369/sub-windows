@@ -3,7 +3,8 @@
 > 竖向分屏的 Telegram alpha + 社交信号监控面板，专为副屏 / 第二显示器设计。
 > 一眼掌握 6 个 alpha 群、X、币安广场、新闻的多窗格实时流。
 
-**Phase 1**：纯前端 UI（模拟数据）。Phase 2 将接入 Telegram Bot + DexScreener 实时数据。
+**Phase 1**：纯前端 UI（模拟数据）。
+**Phase 2**：微信只读数据聚合（wechat-decrypt）已接入，支持微信群实时监控、CA/市值高亮、设置持久化。
 
 ---
 
@@ -102,26 +103,30 @@ npm run electron:dist
 ```
 crypto-side-screen/
 ├── electron/
-│   ├── main.ts                  # Electron 主进程（hiddenInset 标题栏 + IPC）
-│   ├── preload.ts               # 预加载脚本（暴露 cssApi）
+│   ├── main.ts                  # Electron 主进程（hiddenInset 标题栏 + IPC + settings 持久化）
+│   ├── preload.ts               # 预加载脚本（暴露 cssApi + wechat + settings API）
+│   ├── wechatService.ts         # 微信解密服务管理（探测/spawn/轮询/IPC 推送）
 │   └── electron-env.d.ts
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx                  # 根布局：TopBar + SplitPane(LeftPanel | RightPanel) + StatusBar
+│   ├── App.tsx                  # 根布局：TopBar + SplitPane + StatusBar + Settings + Wechat hook
 │   ├── index.css                # Tailwind v4 + 主题变量 + signal-pulse 等动效
 │   ├── vite-env.d.ts
 │   ├── types/
-│   │   └── index.ts             # 全局类型（TelegramGroup / ChatMessage / FilterState / FeedItem 等）
+│   │   └── index.ts             # 全局类型（MonitoredGroup / ChatMessage / FilterState / FeedItem / AppSettings 等）
 │   ├── lib/
-│   │   └── utils.ts             # cn / 正则提取（CA / MC / keywords）/ 复制 / 打开链接 / 格式化
+│   │   ├── utils.ts             # cn / 正则提取（CA / MC / keywords）/ 复制 / 打开链接 / 格式化
+│   │   └── wechatAdapter.ts     # wechat-decrypt 响应 → ChatMessage / MonitoredGroup 适配器
+│   ├── hooks/
+│   │   └── useWechatMessages.ts # 渲染进程订阅 IPC、聚合微信消息
 │   ├── data/
-│   │   └── mockData.ts          # 6 个群 + ~50 条消息 + feed 数据
+│   │   └── mockData.ts          # 6 个 TG mock 群 + ~50 条消息 + feed 数据
 │   └── components/
 │       ├── TopBar.tsx
 │       ├── SplitPane.tsx        # 可拖动分屏（双击复位）
 │       ├── SettingsModal.tsx
-│       ├── LeftPanel.tsx        # 群聊面板：布局切换 + 网格 + 添加卡片
-│       ├── GroupCard.tsx        # 单卡：traffic lights + 头部 + 滚动消息流
+│       ├── LeftPanel.tsx        # 群聊面板：来源 Tab + 布局切换 + 网格 + 添加卡片
+│       ├── GroupCard.tsx        # 单卡：traffic lights + 头部 + 滚动消息流 + 离线空态
 │       ├── CardTrafficLights.tsx# 卡片红绿灯（红/黄/绿,group-hover 显图标）
 │       ├── ChatMessage.tsx      # 消息渲染 + CA / MC / 信号词高亮
 │       ├── FilterPanel.tsx      # 过滤面板内容（被 Popover 包裹）
@@ -170,20 +175,98 @@ crypto-side-screen/
 
 ---
 
-## Phase 2 路线图（待实现）
+## Phase 2：微信接入（只读数据聚合）
 
-- 主进程引入 `telegraf`，监听 Bot Token 拉取的多个群
-- 正则解析消息中的 CA → 调 DexScreener `/tokens/v1/{chain}/{ca}`
-- 富化后的消息通过 IPC `ipcMain.emit('msg:new', …)` 推送到渲染进程
-- 渲染进程订阅事件 → 替换 mock store
-- 缓存层：本地 SQLite / lowdb 存最近 N 小时消息
-- 设置项落盘到 `app.getPath('userData')`
+### 功能
+
+- **来源切换 Chips**：左侧面板顶部新增 `TG | WX | 全部`，一键过滤卡片来源。
+- **微信群监控卡片**：与 Telegram 卡片完全一致的 UI（红绿灯、过滤 Popover、CA 高亮），来源徽标 `WX` 区分。
+- **双模式服务**：
+  - **外部模式**：在独立终端运行 `python main.py`，Electron 自动探测 `localhost:5678`。
+  - **主进程 spawn**：在设置中填写 Python / 脚本路径，点击「启动微信解密服务」由 Electron 主进程直接拉起。
+- **消息实时推送**：主进程轮询 `/api/history?chat=&since=`，增量推送到渲染进程，卡片自动滚动到底部。
+- **离线空态**：微信服务未连接时，卡片显示「微信服务未连接」+ 重试 / 打开设置按钮。
+- **设置持久化**：所有配置自动保存到 `app.getPath('userData')/app-settings.json`，重启后恢复。
+
+### 安装 wechat-decrypt
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/ylytdeng/wechat-decrypt.git
+cd wechat-decrypt
+
+# 2. 安装依赖
+pip install -r requirements.txt
+```
+
+### 平台差异与权限
+
+| 平台 | 前置条件 | 运行命令 |
+|------|----------|----------|
+| **Windows** | 管理员权限（读取进程内存） | `python main.py` |
+| **macOS** | Xcode CLI + 对微信重新签名 + root | `sudo codesign --force --deep --sign - /Applications/WeChat.app` <br> `cc -O2 -o find_all_keys_macos find_all_keys_macos.c -framework Foundation` <br> `sudo ./find_all_keys_macos` <br> `python3 decrypt_db.py` <br> `python3 main.py` |
+| **Linux** | root 或 `CAP_SYS_PTRACE` | `sudo python3 main.py` |
+
+### 并行运行 Electron + wechat-decrypt
+
+**方案 A（推荐）：单独终端**
+
+终端 1：
+```bash
+cd /path/to/wechat-decrypt
+python main.py        # 管理员 / root
+```
+
+终端 2：
+```bash
+cd /path/to/crypto-side-screen
+npm run dev
+```
+
+Electron 启动后会自动探测 `localhost:5678`；若可达则开始轮询配置的微信群。
+
+**方案 B：一键 concurrently（可选）**
+
+```bash
+npm install -g concurrently   # 或已包含在 devDeps
+# 编辑 package.json 中的 wechat:start 脚本指向你的 wechat-decrypt 路径
+npm run dev:all
+```
+
+### 配置
+
+1. 打开应用 → 设置（⚙️）
+2. 开启「启用微信监控」
+3. 填写「监控群名称」（逗号分隔，如：`Alpha 群, 合约讨论群`）
+4. （可选）修改服务地址 / Python 路径 / 脚本路径
+5. 保存
+6. 若使用外部模式：确保 `python main.py` 已在运行
+7. 若使用 spawn 模式：点击「启动微信解密服务」
 
 ---
 
-## 已知 Phase 1 局限
+## IPC（preload `window.cssApi`）
 
-- 所有数据均为硬编码 mock；过滤、复制、链接跳转是真的，但消息不会更新
-- "全局刷新"按钮只是动画反馈，不会拉新数据
+| 方法 | 说明 |
+|------|------|
+| `openExternal(url)` | 用系统浏览器打开 http(s) 链接 |
+| `copyText(text)` | 写入系统剪贴板 |
+| `toggleFullscreen()` | 切换主窗口全屏 |
+| `platform` | `process.platform` 字段（同步暴露） |
+| `loadSettings()` | 从 `userData/app-settings.json` 加载配置 |
+| `saveSettings(data)` | 保存配置到本地 JSON |
+| `wechatStart(cfg)` | 启动/连接微信解密服务（含可选 spawn） |
+| `wechatStop()` | 停止服务并终止子进程 |
+| `wechatStatus()` | 获取当前服务状态 |
+| `onWechatMessage(cb)` | 订阅批量消息推送（返回 unsubscribe） |
+| `onWechatStatusChange(cb)` | 订阅服务状态变更（返回 unsubscribe） |
+
+---
+
+## 已知 Phase 1/2 局限
+
+- Telegram 数据仍为硬编码 mock；过滤、复制、链接跳转是真的，但消息不会更新
+- "全局刷新"按钮只是动画反馈，不会拉新数据（Telegram 侧）
 - 状态栏 BTC / ETH / SOL 价格是占位字符串
 - 折叠后的卡片仍占网格行最小高度（220px）—— 行高由 `[grid-auto-rows:minmax(220px,1fr)]` 控制
+- wechat-decrypt 需要管理员/root 权限，macOS 需重新签名微信 App

@@ -1,16 +1,24 @@
 import * as React from 'react'
-import { MessageSquare, Plus, Inbox } from 'lucide-react'
+import { MessageSquare, Plus, Inbox, WifiOff, Settings } from 'lucide-react'
 import { GroupCard } from '@/components/GroupCard'
 import { Popover } from '@/components/ui/popover'
 import { MOCK_GROUPS, MOCK_MESSAGES } from '@/data/mockData'
 import { cn } from '@/lib/utils'
+import type { ChatMessage, MonitoredGroup } from '@/types'
 
 export interface LeftPanelProps {
   globalQuery?: string
   refreshTick?: number
+  wxGroups?: MonitoredGroup[]
+  wxMessagesByGroup?: Record<string, ChatMessage[]>
+  wxStatus?: string
+  wxError?: string | null
+  onRetryWechat?: () => void
+  onOpenSettings?: () => void
 }
 
 type LayoutId = '2col' | '3col' | 'focus'
+type SourceTab = 'telegram' | 'wechat' | 'all'
 
 const LAYOUTS: { id: LayoutId; label: string }[] = [
   { id: '2col',  label: '2 列' },
@@ -18,31 +26,54 @@ const LAYOUTS: { id: LayoutId; label: string }[] = [
   { id: 'focus', label: 'Focus' },
 ]
 
+const SOURCE_TABS: { id: SourceTab; label: string }[] = [
+  { id: 'telegram', label: 'TG' },
+  { id: 'wechat', label: 'WX' },
+  { id: 'all', label: '全部' },
+]
+
 const ALL_GROUP_IDS = MOCK_GROUPS.map((g) => g.id)
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({
   globalQuery,
   refreshTick,
+  wxGroups = [],
+  wxMessagesByGroup = {},
+  wxStatus,
+  wxError,
+  onRetryWechat,
+  onOpenSettings,
 }) => {
+  const [sourceTab, setSourceTab] = React.useState<SourceTab>('telegram')
   const [layout, setLayout] = React.useState<LayoutId>('3col')
   const [activeIds, setActiveIds] = React.useState<string[]>(ALL_GROUP_IDS)
   const [focusedId, setFocusedId] = React.useState<string>(MOCK_GROUPS[0].id)
   const [addOpen, setAddOpen] = React.useState(false)
   const addBtnRef = React.useRef<HTMLButtonElement | null>(null)
 
+  const allGroups = React.useMemo(() => [...MOCK_GROUPS, ...wxGroups], [wxGroups])
+
   const messagesByGroup = React.useMemo(() => {
-    const map: Record<string, typeof MOCK_MESSAGES> = {}
+    const map: Record<string, ChatMessage[]> = {}
     for (const g of MOCK_GROUPS) {
       map[g.id] = MOCK_MESSAGES.filter((m) => m.groupId === g.id)
     }
+    Object.entries(wxMessagesByGroup).forEach(([id, msgs]) => {
+      map[id] = msgs
+    })
     return map
-  }, [])
+  }, [wxMessagesByGroup])
 
   const groupMap = React.useMemo(() => {
-    const m: Record<string, typeof MOCK_GROUPS[number]> = {}
-    for (const g of MOCK_GROUPS) m[g.id] = g
+    const m: Record<string, MonitoredGroup> = {}
+    for (const g of allGroups) m[g.id] = g
     return m
-  }, [])
+  }, [allGroups])
+
+  const visibleGroups = React.useMemo(
+    () => allGroups.filter((g) => sourceTab === 'all' || g.source === sourceTab),
+    [allGroups, sourceTab],
+  )
 
   const enterFocus = (id: string) => {
     setFocusedId(id)
@@ -58,14 +89,16 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     setAddOpen(false)
   }
 
-  const unusedGroups = MOCK_GROUPS.filter((g) => !activeIds.includes(g.id))
+  const unusedGroups = visibleGroups.filter((g) => !activeIds.includes(g.id))
   const activeGroups = activeIds
     .map((id) => groupMap[id])
-    .filter(Boolean)
+    .filter((g): g is MonitoredGroup => !!g && visibleGroups.some((vg) => vg.id === g.id))
 
-  // Focus mode: thumbnail rail shows all groups except the focused one
-  const focusedGroup = groupMap[focusedId] ?? MOCK_GROUPS[0]
-  const otherGroups = MOCK_GROUPS.filter((g) => g.id !== focusedGroup.id)
+  // Focus mode: thumbnail rail shows all visible groups except the focused one
+  const focusedGroup = visibleGroups.find((g) => g.id === focusedId) ?? visibleGroups[0] ?? MOCK_GROUPS[0]
+  const otherGroups = visibleGroups.filter((g) => g.id !== focusedGroup.id)
+
+  const isWxOffline = sourceTab === 'wechat' && wxStatus !== 'connected'
 
   return (
     <section className="flex flex-col h-full min-h-0 border-r border-zinc-800 bg-zinc-950">
@@ -77,11 +110,38 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           <span className="text-[10px] font-mono text-zinc-500">
             {layout === 'focus'
               ? `FOCUS · ${focusedGroup.name}`
-              : `${activeIds.length} / ${MOCK_GROUPS.length} 卡片`}
+              : `${activeGroups.length} / ${visibleGroups.length} 卡片`}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Source tabs */}
+          <div
+            className="flex items-center gap-0.5 p-0.5 rounded-md bg-zinc-900/80 border border-zinc-800 mr-1"
+            role="tablist"
+            aria-label="来源切换"
+          >
+            {SOURCE_TABS.map((t) => {
+              const active = sourceTab === t.id
+              return (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setSourceTab(t.id)}
+                  className={cn(
+                    'inline-flex items-center justify-center h-6 px-1.5 rounded text-[10px] font-medium transition-colors',
+                    active
+                      ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40'
+                      : 'text-zinc-400 hover:text-zinc-100',
+                  )}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+
           {/* Add card button — only shown in grid modes */}
           {layout !== 'focus' && (
             <button
@@ -151,7 +211,16 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             />
           )
           : activeGroups.length === 0
-            ? <EmptyGrid onAdd={() => setAddOpen(true)} />
+            ? (
+              <EmptyGrid
+                sourceTab={sourceTab}
+                wxStatus={wxStatus}
+                wxError={wxError}
+                onAdd={() => setAddOpen(true)}
+                onRetry={onRetryWechat}
+                onOpenSettings={onOpenSettings}
+              />
+            )
             : (
               <div
                 className={cn(
@@ -169,6 +238,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     refreshTick={refreshTick}
                     onFocus={() => enterFocus(g.id)}
                     onRemove={() => removeCard(g.id)}
+                    offline={g.source === 'wechat' && wxStatus !== 'connected'}
+                    offlineActions={[
+                      ...(onRetryWechat ? [{ label: '重试', onClick: onRetryWechat }] : []),
+                      ...(onOpenSettings ? [{ label: '打开设置', onClick: onOpenSettings }] : []),
+                    ]}
                   />
                 ))}
               </div>
@@ -196,21 +270,35 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   所有群都已显示。
                 </p>
               )
-              : unusedGroups.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => addCard(g.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800/70 text-left"
-                >
-                  <span className="text-base leading-none">{g.emoji}</span>
-                  <span className="flex-1 text-[12px] text-zinc-100 truncate">
-                    {g.name}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500">
-                    {messagesByGroup[g.id]?.length ?? 0}
-                  </span>
-                </button>
-              ))}
+              : (
+                <>
+                  {sourceTab === 'all' && (
+                    <div className="px-3 py-1 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                      {sourceTab === 'all' ? '全部来源' : ''}
+                    </div>
+                  )}
+                  {unusedGroups.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => addCard(g.id)}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800/70 text-left"
+                    >
+                      <span className="text-base leading-none">{g.emoji}</span>
+                      <span className="flex-1 text-[12px] text-zinc-100 truncate">
+                        {g.name}
+                      </span>
+                      {g.source === 'wechat' && (
+                        <span className="text-[9px] font-mono text-zinc-500 border border-zinc-700 rounded px-1">
+                          WX
+                        </span>
+                      )}
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        {messagesByGroup[g.id]?.length ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
           </div>
         </div>
       </Popover>
@@ -219,9 +307,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 }
 
 interface FocusLayoutProps {
-  focused: typeof MOCK_GROUPS[number]
-  others: typeof MOCK_GROUPS
-  messagesByGroup: Record<string, typeof MOCK_MESSAGES>
+  focused: MonitoredGroup
+  others: MonitoredGroup[]
+  messagesByGroup: Record<string, ChatMessage[]>
   globalQuery?: string
   refreshTick?: number
   onSwap: (id: string) => void
@@ -241,8 +329,8 @@ const FocusLayout: React.FC<FocusLayoutProps> = ({
     {/* Thumbnail rail */}
     <aside className="shrink-0 w-32 flex flex-col gap-1.5 overflow-y-auto pr-0.5">
       {others.map((g) => {
-        const total = messagesByGroup[g.id].length
-        const lastMsg = messagesByGroup[g.id][total - 1]
+        const total = messagesByGroup[g.id]?.length ?? 0
+        const lastMsg = messagesByGroup[g.id]?.[total - 1]
         return (
           <button
             key={g.id}
@@ -259,6 +347,9 @@ const FocusLayout: React.FC<FocusLayoutProps> = ({
               <span className="text-[11px] font-semibold text-zinc-100 truncate flex-1">
                 {g.name}
               </span>
+              {g.source === 'wechat' && (
+                <span className="text-[9px] font-mono text-zinc-500 shrink-0">WX</span>
+              )}
               {g.unread > 0 && (
                 <span className="text-[9px] font-mono text-orange-300 shrink-0">
                   {g.unread}
@@ -290,24 +381,63 @@ const FocusLayout: React.FC<FocusLayoutProps> = ({
   </div>
 )
 
-const EmptyGrid: React.FC<{ onAdd: () => void }> = ({ onAdd }) => (
-  <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-    <Inbox className="w-8 h-8 text-zinc-600" />
-    <div>
-      <p className="text-xs text-zinc-300">没有显示中的卡片</p>
-      <p className="text-[11px] text-zinc-500 mt-0.5">
-        点上方"加卡片"或切到 Focus 模式
-      </p>
+const EmptyGrid: React.FC<{
+  sourceTab: SourceTab
+  wxStatus?: string
+  wxError?: string | null
+  onAdd: () => void
+  onRetry?: () => void
+  onOpenSettings?: () => void
+}> = ({ sourceTab, wxStatus, wxError, onAdd, onRetry, onOpenSettings }) => {
+  const isWxDown = sourceTab === 'wechat' && wxStatus !== 'connected'
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+      {isWxDown ? (
+        <WifiOff className="w-8 h-8 text-zinc-600" />
+      ) : (
+        <Inbox className="w-8 h-8 text-zinc-600" />
+      )}
+      <div>
+        <p className="text-xs text-zinc-300">
+          {isWxDown ? '微信服务未连接' : '没有显示中的卡片'}
+        </p>
+        <p className="text-[11px] text-zinc-500 mt-0.5">
+          {isWxDown
+            ? (wxError || '请检查设置或在外部终端启动 python main.py')
+            : '点上方"加卡片"或切到 Focus 模式'}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {isWxDown && onRetry && (
+          <button
+            onClick={onRetry}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
+          >
+            重试连接
+          </button>
+        )}
+        {isWxDown && onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            打开设置
+          </button>
+        )}
+        {!isWxDown && (
+          <button
+            onClick={onAdd}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加卡片
+          </button>
+        )}
+      </div>
     </div>
-    <button
-      onClick={onAdd}
-      className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
-    >
-      <Plus className="w-3.5 h-3.5" />
-      添加卡片
-    </button>
-  </div>
-)
+  )
+}
 
 const LayoutIcon: React.FC<{ id: LayoutId; active: boolean }> = ({ id, active }) => {
   const fill = 'currentColor'

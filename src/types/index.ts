@@ -1,13 +1,17 @@
 export type Chain = 'solana' | 'eth' | 'base' | 'bsc'
 
-export interface TelegramGroup {
+export interface MonitoredGroup {
   id: string
   name: string
   emoji: string
   description: string
   members: number
   unread: number
+  source: 'telegram' | 'wechat'
 }
+
+/** @deprecated use MonitoredGroup */
+export type TelegramGroup = MonitoredGroup
 
 export interface ChatMessage {
   id: string
@@ -18,6 +22,7 @@ export interface ChatMessage {
   content: string
   isPinned?: boolean
   isHot?: boolean
+  source?: 'telegram' | 'wechat'
 }
 
 export interface ExtractedToken {
@@ -76,4 +81,10 @@ export interface AppSettings {
   groupIds: string
   dexscreenerEndpoint: string
   refreshIntervalSec: number
+  wechatEnabled: boolean
+  wechatBaseUrl: string
+  wechatPythonPath: string
+  wechatScriptPath: string
+  wechatGroups: string
+  wechatPollIntervalMs: number
 }

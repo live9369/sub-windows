@@ -4,6 +4,7 @@ import { SplitPane } from '@/components/SplitPane'
 import { LeftPanel } from '@/components/LeftPanel'
 import { RightPanel } from '@/components/RightPanel'
 import { SettingsModal } from '@/components/SettingsModal'
+import { useWechatMessages } from '@/hooks/useWechatMessages'
 import { MOCK_FEED, MOCK_GROUPS, MOCK_MESSAGES } from '@/data/mockData'
 import type { AppSettings } from '@/types'
 
@@ -12,6 +13,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   groupIds: '',
   dexscreenerEndpoint: '',
   refreshIntervalSec: 30,
+  wechatEnabled: false,
+  wechatBaseUrl: 'http://localhost:5678',
+  wechatPythonPath: '',
+  wechatScriptPath: '',
+  wechatGroups: '',
+  wechatPollIntervalMs: 3000,
 }
 
 export default function App() {
@@ -21,11 +28,34 @@ export default function App() {
   const [refreshing, setRefreshing] = React.useState(false)
   const [refreshTick, setRefreshTick] = React.useState(0)
 
+  // Load persisted settings on mount
+  React.useEffect(() => {
+    window.cssApi!.loadSettings().then((saved: unknown) => {
+      if (saved && typeof saved === 'object') {
+        setSettings((prev) => ({ ...prev, ...(saved as Partial<AppSettings>) }))
+      }
+    }).catch(() => {})
+  }, [])
+
   const handleRefresh = () => {
     setRefreshing(true)
     setRefreshTick((n) => n + 1)
     window.setTimeout(() => setRefreshing(false), 700)
   }
+
+  const handleSaveSettings = (next: AppSettings) => {
+    setSettings(next)
+    window.cssApi!.saveSettings(next).catch(() => {})
+  }
+
+  const wechat = useWechatMessages({
+    enabled: settings.wechatEnabled,
+    baseUrl: settings.wechatBaseUrl,
+    groups: settings.wechatGroups.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+    pollIntervalMs: settings.wechatPollIntervalMs,
+    pythonPath: settings.wechatPythonPath,
+    scriptPath: settings.wechatScriptPath,
+  })
 
   return (
     <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden">
@@ -44,6 +74,12 @@ export default function App() {
             <LeftPanel
               globalQuery={globalQuery}
               refreshTick={refreshTick}
+              wxGroups={wechat.groups}
+              wxMessagesByGroup={wechat.messagesByGroup}
+              wxStatus={wechat.status}
+              wxError={wechat.error}
+              onRetryWechat={wechat.retry}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           }
           right={
@@ -61,7 +97,7 @@ export default function App() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         settings={settings}
-        onSave={setSettings}
+        onSave={handleSaveSettings}
       />
     </div>
   )
