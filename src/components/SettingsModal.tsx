@@ -94,7 +94,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSave,
 }) => {
+  type SettingsSectionId =
+    | 'general'
+    | 'telegram'
+    | 'wechat'
+    | 'twitter'
+    | 'blockbeats'
+    | 'gmgn'
+
   const [draft, setDraft] = React.useState<AppSettings>(settings)
+  const [activeSection, setActiveSection] = React.useState<SettingsSectionId>('general')
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
   const [starting, setStarting] = React.useState(false)
   const [startError, setStartError] = React.useState<string | null>(null)
 
@@ -111,6 +121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (open) {
       setDraft(settings)
       setStartError(null)
+      setActiveSection('general')
     }
   }, [open, settings])
 
@@ -232,6 +243,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
 
+  const sections: { id: SettingsSectionId; label: string; hint: string }[] = [
+    { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
+    { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
+    { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
+    { id: 'twitter', label: 'X / Twitter', hint: 'WSS 推送' },
+    { id: 'blockbeats', label: 'BlockBeats', hint: '新闻 RSS' },
+    { id: 'gmgn', label: 'GMGN', hint: 'Token 扩展信息' },
+  ]
+
+  const jumpToSection = (id: SettingsSectionId) => {
+    setActiveSection(id)
+    const target = contentRef.current?.querySelector(`#settings-${id}`) as HTMLElement | null
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent onClose={() => onOpenChange(false)}>
@@ -245,7 +271,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-12 gap-3 max-h-[70vh]">
+          <aside className="col-span-4 md:col-span-3 overflow-y-auto pr-1">
+            <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => jumpToSection(section.id)}
+                  className={`w-full text-left rounded-lg px-2.5 py-2 transition-colors ${
+                    activeSection === section.id
+                      ? 'bg-emerald-500/15 border border-emerald-500/30'
+                      : 'hover:bg-zinc-800/70 border border-transparent'
+                  }`}
+                >
+                  <div className="text-xs font-medium text-zinc-200">{section.label}</div>
+                  <div className="text-[10px] text-zinc-500 mt-0.5">{section.hint}</div>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <div ref={contentRef} className="col-span-8 md:col-span-9 space-y-4 overflow-y-auto pr-1">
+            <div id="settings-general">
           <DataSourceCard
             title="通用参数（Telegram Bot 兼容）"
             subtitle="老版机器人聚合参数，主要影响轮询与解析行为。"
@@ -306,7 +354,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </FieldRow>
           </DataSourceCard>
+            </div>
 
+            <div id="settings-telegram">
           <DataSourceCard
             title="Telegram 用户客户端"
             subtitle="使用你自己的 Telegram 账号登录，获取实时群消息。"
@@ -434,7 +484,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </div>
           </DataSourceCard>
+            </div>
 
+            <div id="settings-wechat">
           <DataSourceCard
             title="微信监控（本地敏感数据）"
             subtitle="仅支持本地后端，不建议部署到远程服务。"
@@ -538,7 +590,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </div>
           </DataSourceCard>
+            </div>
 
+            <div id="settings-twitter">
           <DataSourceCard
             title="X / Twitter 实时流"
             subtitle="接入自建 WSS 推送服务，前端仅消费流数据。"
@@ -584,7 +638,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </FieldRow>
           </DataSourceCard>
+            </div>
 
+            <div id="settings-blockbeats">
           <DataSourceCard
             title="BlockBeats 新闻"
             subtitle="新闻流接口，按固定间隔抓取并解析 RSS。"
@@ -618,7 +674,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </FieldRow>
           </DataSourceCard>
+            </div>
 
+            <div id="settings-gmgn">
           <DataSourceCard
             title="GMGN Token 卡片"
             subtitle="用于 token hover 卡片的补充行情信息。"
@@ -639,6 +697,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </FieldRow>
           </DataSourceCard>
+            </div>
+          </div>
         </div>
 
         <DialogFooter>
