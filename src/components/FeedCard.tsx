@@ -4,6 +4,30 @@ import { Badge } from '@/components/ui/badge'
 import { cn, openExternalLink } from '@/lib/utils'
 import type { FeedItem } from '@/types'
 
+function AvatarFallback({ item }: { item: FeedItem }) {
+  const [failed, setFailed] = React.useState(false)
+  if (!item.avatarUrl || failed) {
+    return (
+      <div
+        className={cn(
+          'shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold uppercase',
+          item.avatarColor,
+        )}
+      >
+        {item.avatarLabel}
+      </div>
+    )
+  }
+  return (
+    <img
+      src={item.avatarUrl}
+      alt={item.author}
+      className="shrink-0 w-9 h-9 rounded-full object-cover border border-zinc-800"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 const SOURCE_LABEL: Record<FeedItem['source'], { label: string; tone: string }> = {
   x:       { label: 'X',         tone: 'text-zinc-300' },
   binance: { label: 'BINANCE',   tone: 'text-amber-300' },
@@ -28,14 +52,7 @@ export const FeedCard: React.FC<{ item: FeedItem; query?: string }> = ({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <div
-          className={cn(
-            'shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold uppercase',
-            item.avatarColor,
-          )}
-        >
-          {item.avatarLabel}
-        </div>
+        <AvatarFallback item={item} />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-0.5">
@@ -63,6 +80,15 @@ export const FeedCard: React.FC<{ item: FeedItem; query?: string }> = ({
           <p className="text-[12.5px] leading-relaxed text-zinc-200 break-words whitespace-pre-wrap">
             {highlightContent(item.content, query)}
           </p>
+
+          {item.imageUrl && (
+            <img
+              src={item.imageUrl}
+              alt="media"
+              className="mt-2 rounded-lg border border-zinc-800 max-h-48 object-cover"
+              loading="lazy"
+            />
+          )}
 
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">

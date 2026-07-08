@@ -7,12 +7,14 @@ export interface FeedPanelProps {
   items: FeedItem[]
   globalQuery?: string
   refreshTick?: number
+  footerLabel?: string
 }
 
 export const FeedPanel: React.FC<FeedPanelProps> = ({
   items,
   globalQuery,
   refreshTick,
+  footerLabel,
 }) => {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -48,7 +50,7 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
         <FeedCard key={item.id} item={item} query={globalQuery} />
       ))}
       <div className="px-3 py-6 text-center text-[10px] font-mono text-zinc-600">
-        — 已加载 {filtered.length} 条 · MOCK 数据 —
+        — 已加载 {filtered.length} 条{footerLabel ? ` · ${footerLabel}` : ''} —
       </div>
     </div>
   )

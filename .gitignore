@@ -67,3 +67,8 @@ vendor/wechat-decrypt/all_keys.json
 *.tmp
 *.temp
 .tmp/
+
+# --- 前后端分离：后端代码本地保留，不提交 ---
+electron/
+mock-wechat-server.js
+vendor/wechat-decrypt/

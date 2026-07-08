@@ -7,6 +7,7 @@ import {
   Flame,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { TokenHoverCard } from '@/components/TokenHoverCard'
 import {
   copyToClipboard,
   dexScreenerUrl,
@@ -98,33 +99,35 @@ const TokenChip: React.FC<{ chain: Chain; ca: string }> = ({ chain, ca }) => {
     void openExternalLink(dexScreenerUrl(chain, ca))
   }
   return (
-    <span
-      className="inline-flex items-center gap-1 align-baseline rounded-md px-1.5 py-0.5 mx-0.5 my-0.5 bg-emerald-500/10 border border-emerald-500/40 hover:border-emerald-400/70 hover:bg-emerald-500/15 transition-colors group"
-      title={ca}
-    >
-      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400">
-        {chain === 'eth' ? 'ETH' : 'SOL'}
-      </span>
-      <span className="font-mono text-[11px] text-emerald-200">
-        {shortenAddress(ca)}
-      </span>
-      <button
-        onClick={handleCopy}
-        className="text-emerald-300/80 hover:text-emerald-200"
-        title="复制 CA"
+    <TokenHoverCard chain={chain} ca={ca}>
+      <span
+        className="inline-flex items-center gap-1 align-baseline rounded-md px-1.5 py-0.5 mx-0.5 my-0.5 bg-emerald-500/10 border border-emerald-500/40 hover:border-emerald-400/70 hover:bg-emerald-500/15 transition-colors group"
+        title={ca}
       >
-        {copied
-          ? <Check className="w-3 h-3" />
-          : <Copy className="w-3 h-3" />}
-      </button>
-      <button
-        onClick={handleOpen}
-        className="text-emerald-300/80 hover:text-emerald-200 opacity-0 group-hover:opacity-100 transition-opacity"
-        title="DexScreener"
-      >
-        <ExternalLink className="w-3 h-3" />
-      </button>
-    </span>
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400">
+          {chain === 'eth' ? 'ETH' : 'SOL'}
+        </span>
+        <span className="font-mono text-[11px] text-emerald-200">
+          {shortenAddress(ca)}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="text-emerald-300/80 hover:text-emerald-200"
+          title="复制 CA"
+        >
+          {copied
+            ? <Check className="w-3 h-3" />
+            : <Copy className="w-3 h-3" />}
+        </button>
+        <button
+          onClick={handleOpen}
+          className="text-emerald-300/80 hover:text-emerald-200 opacity-0 group-hover:opacity-100 transition-opacity"
+          title="DexScreener"
+        >
+          <ExternalLink className="w-3 h-3" />
+        </button>
+      </span>
+    </TokenHoverCard>
   )
 }
 

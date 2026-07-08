@@ -66,18 +66,13 @@
 ## 本地运行
 
 ```bash
-# 1. 克隆仓库（含子模块）
-git clone --recursive <repo-url>
-# 若已克隆但未拉子模块：
-# git submodule update --init --recursive
+# 1. 克隆前端仓库
+git clone <repo-url>
 
 # 2. 安装前端依赖
 npm install
 
-# 3. 安装微信解密依赖（Python）
-npm run wechat:install
-
-# 4. 启动开发模式（Electron 窗口 + 热重载）
+# 3. 启动开发模式（Electron 窗口 + 热重载）
 npm run dev
 ```
 
@@ -115,8 +110,7 @@ crypto-side-screen/
 │   ├── preload.ts               # 预加载脚本（暴露 cssApi + wechat + settings API）
 │   ├── wechatService.ts         # 微信解密服务管理（探测/spawn/轮询/IPC 推送）
 │   └── electron-env.d.ts
-├── vendor/
-│   └── wechat-decrypt/          # Git 子模块：ylytdeng/wechat-decrypt
+├── vendor/                      # 可选：本地放后端工具（默认不纳入 Git）
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx                  # 根布局：TopBar + SplitPane + StatusBar + Settings + Wechat hook
@@ -174,6 +168,168 @@ crypto-side-screen/
 
 ---
 
+## 数据接入页面与新手接入指南（前后端分离）
+
+有。前端统一通过「设置」弹窗接入数据源：
+
+- 入口：右上角齿轮按钮（`SettingsModal`）
+- 页面代码：`src/components/SettingsModal.tsx`
+- 配置持久化：`window.cssApi.loadSettings/saveSettings`（主进程落盘到本地）
+
+### 先说清楚：当前架构里的“前后端”
+
+- **前端**：React 页面（`src/`）
+- **本地后端桥接层**：Electron 主进程（`electron/main.ts` + 各 service），负责:
+  - 调外部服务（HTTP / WSS）
+  - 维护长连接
+  - 通过 IPC 推送给前端
+- **外部后端服务**（你需要自己启动）：
+  - WeChat decrypt HTTP 服务
+  - Twitter WSS 推送服务
+  - BlockBeats API（远端）
+
+> 你现在已把后端目录设为不进 Git，符合前后端分离开发：前端仓库干净，后端服务由每个开发者本地单独准备。
+
+### 新用户 0 到 1 启动顺序（推荐）
+
+1. 启动前端桌面容器：`npm run dev`
+2. 打开设置页，先配置并验证 **WeChat**（最容易看见结果）
+3. 再配置 **Telegram 用户客户端**
+4. 再配置 **Twitter WSS**
+5. 最后填 **BlockBeats API Key**
+
+---
+
+### 1) WeChat 数据接入（HTTP）
+
+前端依赖的设置字段：
+
+- `启用微信监控`（开关）
+- `服务地址`（默认 `http://localhost:5678`）
+- `Python 路径`、`脚本路径`（仅在 Electron 代启模式下需要）
+- `轮询间隔（毫秒）`
+
+前端/主进程实际调用：
+
+- `wechat:start` 启动连接
+- `wechat:discover` 拉取群列表
+- `onWechatMessage` 订阅消息推送
+
+后端最小接口约定（你的服务必须满足）：
+
+- `GET /api/history?since=<timestamp>&limit=<n>`
+- 返回 JSON，至少包含 `messages` 数组；每条消息建议字段：
+  - `id`
+  - `timestamp`
+  - `chat`（群名）
+  - `sender`
+  - `content`
+
+启动方式（按你当前本地后端工程为准）：
+
+- 若你本地有 `wechat-decrypt`：进入其目录后运行 `python main.py`
+- 若前端仓库里不再携带后端代码：请单独 clone 后端仓库并启动，再把 `服务地址` 指向对应 URL
+
+成功标志：
+
+- 设置页测试连接不报错
+- 左侧切到 `WX`，点「加卡片」能看到自动发现的群
+- 新消息持续进入卡片
+
+---
+
+### 2) Telegram 数据接入（本地账号直连）
+
+这一路目前不是“你的独立后端 API”，而是 Electron 主进程直接用 Telegram 客户端库登录用户账号。
+
+设置字段：
+
+- `API ID`
+- `API Hash`
+- `手机号`
+
+接入流程：
+
+1. 在设置页填 `API ID / API Hash`，点「连接」
+2. 填手机号，点「登录」
+3. 根据提示输入验证码 / 2FA 密码
+4. 连接成功后会自动拉取 dialogs 并开始推送消息
+
+成功标志：
+
+- 设置页状态显示 `connected`
+- 左侧 Telegram 群可发现并接收实时消息
+
+---
+
+### 3) X / Twitter 数据接入（WSS）
+
+设置字段：
+
+- `启用 WSS 推送`
+- `WSS 地址`（例如 `wss://your-domain/ws`）
+- `Token`
+
+主进程连接行为：
+
+- 连接成功后会发送：`{"token":"<your-token>"}`
+- 随后接收服务端推送并转成 feed 卡片
+
+服务端建议消息格式：
+
+- 连接确认：`{ "status": "connected" }`
+- 推文消息：`{ "action":"tweet", "author": {...}, "content": {...}, "tweet_id": "...", "timestamp": 1710000000 }`
+
+`tweet` 事件里常用字段：
+
+- `author.handle`, `author.name`, `author.avatar`, `author.followers`
+- `content.text`
+- `content.media`（图片可选）
+- `reference`（引用/回复信息，可选）
+
+成功标志：
+
+- 设置后状态从 `connecting` 变 `connected`
+- 右侧 `X` tab 持续出现新卡片
+
+---
+
+### 4) BlockBeats 新闻接入
+
+设置字段：
+
+- `启用新闻监控`
+- `API Key`
+
+行为说明：
+
+- 前端通过 IPC 调 `blockbeats:fetch`
+- 主进程请求 BlockBeats RSS 接口并返回 XML
+- 前端解析 XML 为新闻卡片
+
+成功标志：
+
+- 右侧 `新闻` tab 能拉到列表
+- 不再出现 “请配置 BlockBeats API Key / 未解析到新闻” 提示
+
+---
+
+### 新用户常见失败点（排障清单）
+
+- **WeChat 连不上**
+  - 先访问 `http://localhost:5678/api/history?limit=1` 看是否有响应
+  - 检查端口占用、防火墙、Python 环境、脚本路径
+- **Telegram 一直 idle/error**
+  - `API ID / API Hash` 填错最常见
+  - 检查手机号格式和账号 2FA
+- **Twitter 一直 reconnect**
+  - WSS 地址错误、Token 校验失败、服务端未按约定回 `status: connected`
+- **前端看不到数据**
+  - 设置保存后确认对应开关已开启
+  - 查看设置页状态文案和主进程日志（连接态/报错）
+
+---
+
 ## IPC（preload `window.cssApi`）
 
 | 方法                 | 说明                                |
@@ -198,13 +354,10 @@ crypto-side-screen/
 - **离线空态**：微信服务未连接时，卡片显示「微信服务未连接」+ 重试 / 打开设置按钮。
 - **设置持久化**：所有配置自动保存到 `app.getPath('userData')/app-settings.json`，重启后恢复。
 
-### 安装 wechat-decrypt（已作为子模块）
+### 安装 wechat-decrypt（独立后端，按需准备）
 
 ```bash
-# 拉取子模块（如果克隆时没加 --recursive）
-git submodule update --init --recursive
-
-# 安装 Python 依赖
+# 在 wechat-decrypt 项目目录安装 Python 依赖
 npm run wechat:install
 ```
 
@@ -222,7 +375,7 @@ npm run wechat:install
 
 终端 1：
 ```bash
-npm run wechat:start        # 等价于 cd vendor/wechat-decrypt && python main.py（需要管理员 / root）
+npm run wechat:start        # 需要你本地已有 wechat-decrypt 目录；否则请在独立后端仓库启动
 ```
 
 终端 2：

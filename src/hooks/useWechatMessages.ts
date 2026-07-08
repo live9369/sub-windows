@@ -81,10 +81,20 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
         if (prev.some((g) => g.id === groupId)) return prev
         return [...prev, createWxGroup(groupName)]
       })
-      setMessagesByGroup((prev) => ({
-        ...prev,
-        [groupId]: [...(prev[groupId] ?? []), ...messages],
-      }))
+      setMessagesByGroup((prev) => {
+        const existing = prev[groupId] ?? []
+        const seen = new Set(existing.map((m) => m.id))
+        const newMsgs = messages.filter((m) => {
+          if (!m.id || seen.has(m.id)) return false
+          seen.add(m.id)
+          return true
+        })
+        if (newMsgs.length === 0) return prev
+        const combined = [...existing, ...newMsgs]
+        // Keep last 500 messages per group to prevent unbounded growth
+        const trimmed = combined.length > 500 ? combined.slice(-500) : combined
+        return { ...prev, [groupId]: trimmed }
+      })
     })
     const unsubStatus = window.cssApi!.onWechatStatusChange((s) => {
       const map: Record<string, WechatStatus> = {

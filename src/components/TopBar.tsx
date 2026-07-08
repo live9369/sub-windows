@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   Activity,
+  BookOpen,
   Maximize2,
   RefreshCw,
   Search,
@@ -10,12 +11,14 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { isWebRuntime } from '@/lib/runtimeBridge'
 
 export interface TopBarProps {
   globalQuery: string
   onGlobalQueryChange: (v: string) => void
   onRefresh: () => void
   onOpenSettings: () => void
+  onOpenGuide: () => void
   refreshing?: boolean
 }
 
@@ -24,6 +27,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onGlobalQueryChange,
   onRefresh,
   onOpenSettings,
+  onOpenGuide,
   refreshing,
 }) => {
   const handleFullscreen = () => {
@@ -81,8 +85,11 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="titlebar-no-drag flex items-center gap-1.5 shrink-0">
         <span className="hidden md:flex items-center gap-1 px-2 h-7 rounded-md bg-zinc-900/70 border border-zinc-800 text-[10px] font-mono text-emerald-300">
           <Wifi className="w-3 h-3" />
-          MOCK
+          {isWebRuntime() ? 'WEB' : 'DESKTOP'}
         </span>
+        <Button size="icon" variant="ghost" onClick={onOpenGuide} title="数据接入向导">
+          <BookOpen className="w-4 h-4" />
+        </Button>
         <Button
           size="icon"
           variant="ghost"

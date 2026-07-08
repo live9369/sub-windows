@@ -61,10 +61,12 @@ export interface FeedItem {
   handle: string
   avatarColor: string
   avatarLabel: string
+  avatarUrl?: string
   verified?: boolean
   time: string
   content: string
   link: string
+  imageUrl?: string
   imageHint?: string
   tags?: string[]
   category?: string
@@ -88,4 +90,15 @@ export interface AppSettings {
   wechatScriptPath: string
   wechatGroups: string
   wechatPollIntervalMs: number
+  telegramApiId: number
+  telegramApiHash: string
+  telegramSessionPath: string
+  telegramPhone: string
+  tokenPresets: string
+  blockbeatsEnabled: boolean
+  blockbeatsApiKey: string
+  gmgnApiKey: string
+  twitterWsEnabled: boolean
+  twitterWsUrl: string
+  twitterWsToken: string
 }
