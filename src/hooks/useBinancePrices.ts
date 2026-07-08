@@ -11,26 +11,9 @@ async function fetchPrices(presets: TokenPreset[]): Promise<TokenPrice[]> {
   if (presets.length === 0) return []
 
   try {
-    let data: any
-    if (presets.length === 1) {
-      const res = await fetch(
-        `https://api.binance.com/api/v3/ticker/price?symbol=${presets[0].symbol}`,
-        { signal: AbortSignal.timeout(10000) },
-      )
-      if (!res.ok) return []
-      data = await res.json()
-      if (!data || !data.price) return []
-      data = [data]
-    } else {
-      const symbols = presets.map((p) => p.symbol)
-      const res = await fetch(
-        `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(symbols))}`,
-        { signal: AbortSignal.timeout(10000) },
-      )
-      if (!res.ok) return []
-      data = await res.json()
-      if (!Array.isArray(data)) return []
-    }
+    const symbols = presets.map((p) => p.symbol)
+    const data = await window.cssApi!.binancePrices(symbols)
+    if (!Array.isArray(data)) return []
 
     const labelMap = new Map(presets.map((p) => [p.symbol, p.label]))
     return data

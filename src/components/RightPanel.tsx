@@ -11,6 +11,7 @@ export interface RightPanelProps {
   newsItems?: FeedItem[]
   binanceItems?: FeedItem[]
   binanceStatus?: string
+  binanceError?: string | null
   twitterItems?: FeedItem[]
   twitterStatus?: string
 }
@@ -27,6 +28,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   newsItems = [],
   binanceItems = [],
   binanceStatus,
+  binanceError,
   twitterItems = [],
   twitterStatus,
 }) => {
@@ -79,7 +81,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         binanceStatus === 'connecting'
           ? '正在拉取币安广场数据…'
           : binanceStatus === 'error'
-            ? '拉取失败，请检查设置中的 curl 命令是否有效'
+            ? `拉取失败：${binanceError || '请检查 curl / cookie / token 是否有效'}`
             : '已连接，等待下一次轮询…'
       out.binance = [
         {
@@ -125,7 +127,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     // Replace mock news with real BlockBeats news
     out.news = newsItems.length > 0 ? newsItems : out.news
     return out
-  }, [binanceItems, binanceStatus, newsItems, twitterItems, twitterStatus])
+  }, [binanceError, binanceItems, binanceStatus, newsItems, twitterItems, twitterStatus])
 
   return (
     <section className="flex flex-col h-full min-h-0 bg-zinc-950">

@@ -33,8 +33,6 @@ const SOURCE_TABS: { id: SourceTab; label: string }[] = [
   { id: 'all', label: '全部' },
 ]
 
-const ALL_GROUP_IDS = MOCK_GROUPS.map((g) => g.id)
-
 export const LeftPanel: React.FC<LeftPanelProps> = ({
   globalQuery,
   refreshTick,
@@ -47,23 +45,50 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 }) => {
   const [sourceTab, setSourceTab] = React.useState<SourceTab>('telegram')
   const [layout, setLayout] = React.useState<LayoutId>('3col')
-  const [activeIds, setActiveIds] = React.useState<string[]>(ALL_GROUP_IDS)
+  const [activeIds, setActiveIds] = React.useState<string[]>(MOCK_GROUPS.map((g) => g.id))
   const [focusedId, setFocusedId] = React.useState<string>(MOCK_GROUPS[0].id)
   const [addOpen, setAddOpen] = React.useState(false)
   const addBtnRef = React.useRef<HTMLButtonElement | null>(null)
 
-  const allGroups = React.useMemo(() => [...MOCK_GROUPS, ...wxGroups], [wxGroups])
+  const hasRealTelegram = React.useMemo(
+    () => wxGroups.some((g) => g.source === 'telegram' && g.id.startsWith('tg-bot-')),
+    [wxGroups],
+  )
+  const allGroups = React.useMemo(
+    () => [...(hasRealTelegram ? [] : MOCK_GROUPS), ...wxGroups],
+    [hasRealTelegram, wxGroups],
+  )
+
+  React.useEffect(() => {
+    const discoveredTelegramIds = allGroups
+      .filter((g) => g.source === 'telegram')
+      .map((g) => g.id)
+    if (discoveredTelegramIds.length === 0) return
+    setActiveIds((prev) => {
+      const next = [...prev]
+      let changed = false
+      for (const id of discoveredTelegramIds) {
+        if (!next.includes(id)) {
+          next.push(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [allGroups])
 
   const messagesByGroup = React.useMemo(() => {
     const map: Record<string, ChatMessage[]> = {}
-    for (const g of MOCK_GROUPS) {
-      map[g.id] = MOCK_MESSAGES.filter((m) => m.groupId === g.id)
+    if (!hasRealTelegram) {
+      for (const g of MOCK_GROUPS) {
+        map[g.id] = MOCK_MESSAGES.filter((m) => m.groupId === g.id)
+      }
     }
     Object.entries(wxMessagesByGroup).forEach(([id, msgs]) => {
       map[id] = msgs
     })
     return map
-  }, [wxMessagesByGroup])
+  }, [hasRealTelegram, wxMessagesByGroup])
 
   const groupMap = React.useMemo(() => {
     const m: Record<string, MonitoredGroup> = {}

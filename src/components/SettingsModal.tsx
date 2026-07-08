@@ -54,7 +54,7 @@ type SettingsSectionId =
   | 'gmgn'
 
 const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string; hint: string }[] = [
-  { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
+  { id: 'general', label: '通用参数', hint: 'Bot 接入' },
   { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
   { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
   { id: 'binance', label: '币安广场', hint: '手动 curl 抓取' },
@@ -322,16 +322,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div ref={contentRef} className="col-span-8 md:col-span-9 h-full space-y-4 overflow-y-auto pr-1">
             <div id="settings-general">
           <DataSourceCard
-            title="通用参数（Telegram Bot 兼容）"
-            subtitle="老版机器人聚合参数，主要影响轮询与解析行为。"
-            source="Telegram Bot API + DexScreener 公共 API"
-            statusLabel="基础配置"
-            statusVariant="muted"
+            title="通用参数"
+            subtitle="Telegram Bot 推送接入（实时流，非轮询）。"
+            source="你的 Bot 推送服务（WS/SSE）"
+            statusLabel={draft.telegramBotPushUrl ? '已配置' : '未配置'}
+            statusVariant={draft.telegramBotPushUrl ? 'amber' : 'muted'}
           >
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-2 text-[11px] text-zinc-400">
+              当前模式不直接轮询 Telegram。请由你的 Bot 服务推送消息到下方地址（WS 或 SSE）。
+            </div>
+            <FieldRow
+              icon={<Globe className="w-3.5 h-3.5" />}
+              label="Bot 推送地址"
+              hint="ws(s):// 或 http(s)://（SSE）"
+            >
+              <Input
+                placeholder="wss://your-bot-relay/ws"
+                value={draft.telegramBotPushUrl}
+                onChange={(e) => update('telegramBotPushUrl', e.target.value)}
+              />
+            </FieldRow>
             <FieldRow
               icon={<Bot className="w-3.5 h-3.5" />}
-              label="Telegram Bot Token"
-              hint="https://t.me/BotFather 获取"
+              label="Bot Token / 推送鉴权"
+              hint="传给你的推送服务用于鉴权"
             >
               <Input
                 type="password"
@@ -343,41 +357,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <FieldRow
               icon={<Hash className="w-3.5 h-3.5" />}
-              label="监听的群 ID"
-              hint="逗号分隔，支持 -100xxxxxxxxxx 或 @username"
+              label="监听的群 ID（可选）"
+              hint="留空=自动发现；支持 -100... / @username / -100...#topicId"
             >
               <Input
-                placeholder="-1001234567890, @alpha_calls, …"
+                placeholder="留空自动发现；或 -1001234567890#42, @alpha_calls#7"
                 value={draft.groupIds}
                 onChange={(e) => update('groupIds', e.target.value)}
-              />
-            </FieldRow>
-
-            <FieldRow
-              icon={<Globe className="w-3.5 h-3.5" />}
-              label="DexScreener API"
-              hint="留空使用默认"
-            >
-              <Input
-                placeholder="https://api.dexscreener.com/latest/dex"
-                value={draft.dexscreenerEndpoint}
-                onChange={(e) => update('dexscreenerEndpoint', e.target.value)}
-              />
-            </FieldRow>
-
-            <FieldRow
-              icon={<Timer className="w-3.5 h-3.5" />}
-              label="刷新间隔（秒）"
-              hint="信息流轮询周期"
-            >
-              <Input
-                type="number"
-                min={5}
-                max={600}
-                value={draft.refreshIntervalSec}
-                onChange={(e) =>
-                  update('refreshIntervalSec', Number(e.target.value) || 30)
-                }
               />
             </FieldRow>
           </DataSourceCard>

@@ -69,6 +69,7 @@ export interface CssApi {
   onTelegramNeedCode: (cb: () => void) => () => any
   onTelegramNeedPassword: (cb: () => void) => () => any
 
+  binancePrices: (symbols: string[]) => Promise<Array<{ symbol: string; price: string }>>
   blockbeatsFetch: (apiKey: string, page?: number, size?: number) => Promise<string>
   binanceSquareFetch: (curlCommand: string) => Promise<string>
 

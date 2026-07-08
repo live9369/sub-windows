@@ -11,6 +11,8 @@ import { useBinancePrices } from '@/hooks/useBinancePrices'
 import { useBlockbeatsNews } from '@/hooks/useBlockbeatsNews'
 import { useTwitterStream } from '@/hooks/useTwitterStream'
 import { useBinanceSquareFeed } from '@/hooks/useBinanceSquareFeed'
+import { useTelegramMessages } from '@/hooks/useTelegramMessages'
+import { useTelegramBotPush } from '@/hooks/useTelegramBotPush'
 import {
   DEFAULT_TOKEN_PRESETS,
   parseTokenPresets,
@@ -23,8 +25,7 @@ import type { AppSettings } from '@/types'
 const DEFAULT_SETTINGS: AppSettings = {
   telegramBotToken: '',
   groupIds: '',
-  dexscreenerEndpoint: '',
-  refreshIntervalSec: 30,
+  telegramBotPushUrl: '',
   wechatEnabled: false,
   wechatBaseUrl: 'http://localhost:5678',
   wechatPythonPath: '',
@@ -91,6 +92,38 @@ export default function App() {
     intervalMs: 30000,
   })
 
+  const wechat = useWechatMessages({
+    enabled: settings.wechatEnabled,
+    baseUrl: settings.wechatBaseUrl,
+    pollIntervalMs: settings.wechatPollIntervalMs,
+    pythonPath: settings.wechatPythonPath,
+    scriptPath: settings.wechatScriptPath,
+  })
+
+  const telegram = useTelegramMessages({
+    enabled: Boolean(settings.telegramApiId && settings.telegramApiHash),
+    apiId: settings.telegramApiId,
+    apiHash: settings.telegramApiHash,
+    phone: settings.telegramPhone,
+  })
+
+  const telegramBot = useTelegramBotPush({
+    enabled: Boolean(settings.telegramBotPushUrl?.trim()),
+    pushUrl: settings.telegramBotPushUrl,
+    token: settings.telegramBotToken,
+    groupIds: settings.groupIds,
+  })
+
+  const leftGroups = React.useMemo(
+    () => [...wechat.discoveredGroups, ...telegram.discoveredGroups, ...telegramBot.discoveredGroups],
+    [wechat.discoveredGroups, telegram.discoveredGroups, telegramBot.discoveredGroups],
+  )
+
+  const leftMessagesByGroup = React.useMemo(
+    () => ({ ...wechat.messagesByGroup, ...telegram.messagesByGroup, ...telegramBot.messagesByGroup }),
+    [wechat.messagesByGroup, telegram.messagesByGroup, telegramBot.messagesByGroup],
+  )
+
   // Load persisted settings on mount
   React.useEffect(() => {
     window.cssApi!.loadSettings().then((saved: unknown) => {
@@ -122,14 +155,6 @@ export default function App() {
     handleSaveSettings(updated)
   }
 
-  const wechat = useWechatMessages({
-    enabled: settings.wechatEnabled,
-    baseUrl: settings.wechatBaseUrl,
-    pollIntervalMs: settings.wechatPollIntervalMs,
-    pythonPath: settings.wechatPythonPath,
-    scriptPath: settings.wechatScriptPath,
-  })
-
   return (
     <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden">
       <TopBar
@@ -148,8 +173,8 @@ export default function App() {
             <LeftPanel
               globalQuery={globalQuery}
               refreshTick={refreshTick}
-              wxGroups={wechat.discoveredGroups}
-              wxMessagesByGroup={wechat.messagesByGroup}
+              wxGroups={leftGroups}
+              wxMessagesByGroup={leftMessagesByGroup}
               wxStatus={wechat.status}
               wxError={wechat.error}
               onRetryWechat={wechat.retry}
@@ -163,6 +188,7 @@ export default function App() {
               newsItems={blockbeats.items}
               binanceItems={binanceSquare.items}
               binanceStatus={binanceSquare.status}
+              binanceError={binanceSquare.error}
               twitterItems={twitter.items}
               twitterStatus={twitter.status}
             />

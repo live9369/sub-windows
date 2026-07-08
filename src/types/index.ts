@@ -82,8 +82,7 @@ export interface FilterState {
 export interface AppSettings {
   telegramBotToken: string
   groupIds: string
-  dexscreenerEndpoint: string
-  refreshIntervalSec: number
+  telegramBotPushUrl: string
   wechatEnabled: boolean
   wechatBaseUrl: string
   wechatPythonPath: string
