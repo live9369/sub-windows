@@ -26,7 +26,7 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) 
         className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in"
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-h-[85vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -40,6 +40,7 @@ export const DialogContent: React.FC<{
 }> = ({ className, children, onClose }) => (
   <div
     className={cn(
+      'w-full max-w-lg mx-auto',
       'relative rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl',
       'p-5 m-4',
       className,

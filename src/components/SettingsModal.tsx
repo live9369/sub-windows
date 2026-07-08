@@ -43,6 +43,23 @@ export interface SettingsModalProps {
   onSave: (next: AppSettings) => void
 }
 
+type SettingsSectionId =
+  | 'general'
+  | 'telegram'
+  | 'wechat'
+  | 'twitter'
+  | 'blockbeats'
+  | 'gmgn'
+
+const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string; hint: string }[] = [
+  { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
+  { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
+  { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
+  { id: 'twitter', label: 'X / Twitter', hint: 'WSS 推送' },
+  { id: 'blockbeats', label: 'BlockBeats', hint: '新闻 RSS' },
+  { id: 'gmgn', label: 'GMGN', hint: 'Token 扩展信息' },
+]
+
 const FieldRow: React.FC<{
   icon: React.ReactNode
   label: string
@@ -94,14 +111,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSave,
 }) => {
-  type SettingsSectionId =
-    | 'general'
-    | 'telegram'
-    | 'wechat'
-    | 'twitter'
-    | 'blockbeats'
-    | 'gmgn'
-
   const [draft, setDraft] = React.useState<AppSettings>(settings)
   const [activeSection, setActiveSection] = React.useState<SettingsSectionId>('general')
   const contentRef = React.useRef<HTMLDivElement | null>(null)
@@ -243,24 +252,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
 
-  const sections: { id: SettingsSectionId; label: string; hint: string }[] = [
-    { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
-    { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
-    { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
-    { id: 'twitter', label: 'X / Twitter', hint: 'WSS 推送' },
-    { id: 'blockbeats', label: 'BlockBeats', hint: '新闻 RSS' },
-    { id: 'gmgn', label: 'GMGN', hint: 'Token 扩展信息' },
-  ]
-
   const jumpToSection = (id: SettingsSectionId) => {
     setActiveSection(id)
     const target = contentRef.current?.querySelector(`#settings-${id}`) as HTMLElement | null
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  React.useEffect(() => {
+    if (!open) return
+    const root = contentRef.current
+    if (!root) return
+
+    const elements = SETTINGS_SECTIONS
+      .map((s) => root.querySelector(`#settings-${s.id}`) as HTMLElement | null)
+      .filter(Boolean) as HTMLElement[]
+    if (elements.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        const top = visible[0]
+        if (!top) return
+        const id = top.target.id.replace('settings-', '') as SettingsSectionId
+        setActiveSection(id)
+      },
+      {
+        root,
+        threshold: [0.2, 0.45, 0.7],
+        rootMargin: '-8% 0px -55% 0px',
+      },
+    )
+
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [open])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onClose={() => onOpenChange(false)}>
+      <DialogContent className="max-w-[min(1200px,96vw)]" onClose={() => onOpenChange(false)}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>应用设置</DialogTitle>
@@ -274,7 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="grid grid-cols-12 gap-3 max-h-[70vh]">
           <aside className="col-span-4 md:col-span-3 overflow-y-auto pr-1">
             <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
-              {sections.map((section) => (
+              {SETTINGS_SECTIONS.map((section) => (
                 <button
                   key={section.id}
                   type="button"

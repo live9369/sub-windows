@@ -2,6 +2,14 @@ import type { CssApi } from '@/types/cssApi'
 
 const noopUnsub = () => ({} as any)
 
+function detectPlatform(): string {
+  if (typeof navigator === 'undefined') return 'linux'
+  const ua = navigator.userAgent.toLowerCase()
+  if (ua.includes('windows')) return 'win32'
+  if (ua.includes('mac os') || ua.includes('macintosh')) return 'darwin'
+  return 'linux'
+}
+
 function unsupported(method: string): Promise<never> {
   return Promise.reject(
     new Error(`[web] ${method} 仅支持桌面版（Electron 本地桥接）`),
@@ -24,7 +32,7 @@ const webShim: CssApi = {
     return false
   },
   toggleFullscreen: async () => false,
-  platform: 'linux',
+  platform: detectPlatform(),
 
   loadSettings: async () => null,
   saveSettings: async () => true,

@@ -15,8 +15,8 @@
     "electron:dist:mac": "npm run build && electron-builder --mac",
     "electron:dist:win": "npm run build && electron-builder --win",
     "lint": "tsc -b --noEmit",
-    "wechat:install": "cd vendor/wechat-decrypt && pip install -r requirements.txt",
-    "wechat:start": "cd vendor/wechat-decrypt && python main.py",
+    "wechat:install": "node -e \"const fs=require('fs');const cp=require('child_process');const dir=process.env.WECHAT_BACKEND_DIR||'vendor/wechat-decrypt';if(!fs.existsSync(dir)){console.error('[wechat] backend dir not found:',dir);console.error('Set WECHAT_BACKEND_DIR or clone backend locally.');process.exit(1);}const py=process.env.PYTHON_BIN||(process.platform==='win32'?'py':'python3');const r=cp.spawnSync(py,['-m','pip','install','-r','requirements.txt'],{cwd:dir,stdio:'inherit'});process.exit(r.status??1);\"",
+    "wechat:start": "node -e \"const fs=require('fs');const cp=require('child_process');const dir=process.env.WECHAT_BACKEND_DIR||'vendor/wechat-decrypt';if(!fs.existsSync(dir)){console.error('[wechat] backend dir not found:',dir);console.error('Set WECHAT_BACKEND_DIR or start backend in a separate repo.');process.exit(1);}const py=process.env.PYTHON_BIN||(process.platform==='win32'?'py':'python3');const r=cp.spawnSync(py,['main.py'],{cwd:dir,stdio:'inherit'});process.exit(r.status??1);\"",
     "dev:all": "concurrently \"npm run dev\" \"npm run wechat:start\""
   },
   "dependencies": {
