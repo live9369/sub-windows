@@ -18,6 +18,7 @@ import {
   Shield,
   Newspaper,
   Wifi,
+  Coins,
   Database,
   ExternalLink,
   CircleDot,
@@ -47,6 +48,7 @@ type SettingsSectionId =
   | 'general'
   | 'telegram'
   | 'wechat'
+  | 'binance'
   | 'twitter'
   | 'blockbeats'
   | 'gmgn'
@@ -55,6 +57,7 @@ const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string; hint: string }[
   { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
   { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
   { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
+  { id: 'binance', label: '币安广场', hint: '公开行情流' },
   { id: 'twitter', label: 'X / Twitter', hint: 'WSS 推送' },
   { id: 'blockbeats', label: 'BlockBeats', hint: '新闻 RSS' },
   { id: 'gmgn', label: 'GMGN', hint: 'Token 扩展信息' },
@@ -261,6 +264,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ? { label: '已配置', variant: 'amber' as const }
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
+
+  const binanceStatusUi = {
+    label: '已启用',
+    variant: 'neon' as const,
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -607,6 +615,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <p className="mt-1.5 text-[11px] text-rose-400">{startError}</p>
               )}
             </div>
+          </DataSourceCard>
+            </div>
+
+            <div id="settings-binance">
+          <DataSourceCard
+            title="币安广场 / 行情流"
+            subtitle="内置公开行情数据源，用于右侧币安信息流与底部价格栏。"
+            source="Binance 公共市场接口（无需 API Key）"
+            statusLabel={binanceStatusUi.label}
+            statusVariant={binanceStatusUi.variant}
+          >
+            <div className="text-[11px] text-zinc-500 flex items-center gap-1">
+              <Coins className="w-3.5 h-3.5" />
+              该数据源默认启用，无需额外账号或密钥。
+            </div>
+            <FieldRow
+              icon={<Timer className="w-3.5 h-3.5" />}
+              label="展示刷新参考"
+              hint="当前客户端内置约 10 秒刷新"
+            >
+              <Input
+                value="内置自动刷新（无需配置）"
+                readOnly
+                className="text-zinc-500"
+              />
+            </FieldRow>
           </DataSourceCard>
             </div>
 
