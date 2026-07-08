@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { ChatMessage, MonitoredGroup } from '@/types'
+import type { TelegramBatch, TelegramDialog } from '@/types/cssApi'
 
 type TgStatus = 'idle' | 'connecting' | 'waiting_code' | 'waiting_password' | 'connected' | 'error'
 
@@ -8,6 +9,18 @@ export interface UseTelegramMessagesOptions {
   apiId: number
   apiHash: string
   phone: string
+}
+
+function mapDialogsToGroups(dialogs: TelegramDialog[]): MonitoredGroup[] {
+  return dialogs.map((d) => ({
+    id: `tg-${d.id}`,
+    name: d.name,
+    emoji: d.type === 'channel' ? '📢' : d.type === 'group' ? '👥' : '👤',
+    description: `${d.type} · unread ${d.unreadCount}`,
+    members: 0,
+    unread: d.unreadCount || 0,
+    source: 'telegram' as const,
+  }))
 }
 
 export function useTelegramMessages(options: UseTelegramMessagesOptions) {
@@ -34,17 +47,7 @@ export function useTelegramMessages(options: UseTelegramMessagesOptions) {
       if (state.state === 'connected') {
         // Load dialogs after connection
         const dialogs = await window.cssApi!.telegramGetDialogs()
-        setDiscoveredGroups(
-          dialogs.map((d: any) => ({
-            id: `tg-${d.id}`,
-            name: d.name,
-            emoji: d.type === 'channel' ? '📢' : d.type === 'group' ? '👥' : '👤',
-            description: `${d.type} · unread ${d.unreadCount}`,
-            members: 0,
-            unread: d.unreadCount || 0,
-            source: 'telegram' as const,
-          })),
-        )
+        setDiscoveredGroups(mapDialogsToGroups(dialogs))
       } else if (state.state === 'idle' && state.error) {
         setError(state.error)
         setStatus('error')
@@ -81,17 +84,7 @@ export function useTelegramMessages(options: UseTelegramMessagesOptions) {
       setNeedCode(false)
       if (state.state === 'connected') {
         const dialogs = await window.cssApi!.telegramGetDialogs()
-        setDiscoveredGroups(
-          dialogs.map((d: any) => ({
-            id: `tg-${d.id}`,
-            name: d.name,
-            emoji: d.type === 'channel' ? '📢' : d.type === 'group' ? '👥' : '👤',
-            description: `${d.type} · unread ${d.unreadCount}`,
-            members: 0,
-            unread: d.unreadCount || 0,
-            source: 'telegram' as const,
-          })),
-        )
+        setDiscoveredGroups(mapDialogsToGroups(dialogs))
       }
     } catch (err: any) {
       const msg = err?.message || String(err)
@@ -108,17 +101,7 @@ export function useTelegramMessages(options: UseTelegramMessagesOptions) {
       setNeedPassword(false)
       if (state.state === 'connected') {
         const dialogs = await window.cssApi!.telegramGetDialogs()
-        setDiscoveredGroups(
-          dialogs.map((d: any) => ({
-            id: `tg-${d.id}`,
-            name: d.name,
-            emoji: d.type === 'channel' ? '📢' : d.type === 'group' ? '👥' : '👤',
-            description: `${d.type} · unread ${d.unreadCount}`,
-            members: 0,
-            unread: d.unreadCount || 0,
-            source: 'telegram' as const,
-          })),
-        )
+        setDiscoveredGroups(mapDialogsToGroups(dialogs))
       }
     } catch (err: any) {
       const msg = err?.message || String(err)
@@ -150,12 +133,8 @@ export function useTelegramMessages(options: UseTelegramMessagesOptions) {
   // Subscribe to IPC messages from main
   React.useEffect(() => {
     if (!enabled) return
-    const unsubMsg = window.cssApi!.onTelegramMessage((batch) => {
-      const { groupId, groupName, messages } = batch as {
-        groupId: string
-        groupName: string
-        messages: ChatMessage[]
-      }
+    const unsubMsg = window.cssApi!.onTelegramMessage((batch: TelegramBatch) => {
+      const { groupId, groupName, messages } = batch
       setDiscoveredGroups((prev) => {
         if (prev.some((g) => g.id === groupId)) return prev
         return [
@@ -199,7 +178,7 @@ export function useTelegramMessages(options: UseTelegramMessagesOptions) {
   // Initial status query on mount
   React.useEffect(() => {
     if (!enabled) return
-    window.cssApi!.telegramStatus().then((s: any) => {
+    window.cssApi!.telegramStatus().then((s) => {
       if (s?.state) setStatus(s.state as TgStatus)
       if (s?.error) setError(s.error)
     }).catch(() => {})

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { FeedItem } from '@/types'
+import type { TwitterState } from '@/types/cssApi'
 
 export interface UseTwitterStreamOptions {
   enabled: boolean
@@ -11,7 +12,7 @@ export function useTwitterStream(options: UseTwitterStreamOptions) {
   const { enabled, wsUrl, token } = options
 
   const [items, setItems] = React.useState<FeedItem[]>([])
-  const [status, setStatus] = React.useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
+  const [status, setStatus] = React.useState<TwitterState['state']>('idle')
   const [error, setError] = React.useState<string | null>(null)
 
   const start = React.useCallback(async () => {
@@ -49,7 +50,6 @@ export function useTwitterStream(options: UseTwitterStreamOptions) {
   React.useEffect(() => {
     if (!enabled) return
     const unsubTweet = window.cssApi!.onTwitterTweet((data) => {
-      console.log('[useTwitterStream] tweet received:', data)
       const item = data as FeedItem
       setItems((prev) => {
         if (prev.some((p) => p.id === item.id)) return prev
@@ -58,8 +58,7 @@ export function useTwitterStream(options: UseTwitterStreamOptions) {
       })
     })
     const unsubStatus = window.cssApi!.onTwitterStatusChange((s) => {
-      console.log('[useTwitterStream] status change:', s)
-      setStatus(s.state as any)
+      setStatus(s.state)
       if (s.error) setError(s.error)
     })
     return () => {
@@ -71,7 +70,7 @@ export function useTwitterStream(options: UseTwitterStreamOptions) {
   // Initial status query
   React.useEffect(() => {
     if (!enabled) return
-    window.cssApi!.twitterStatus().then((s: any) => {
+    window.cssApi!.twitterStatus().then((s) => {
       if (s?.state) setStatus(s.state)
       if (s?.error) setError(s.error)
     }).catch(() => {})

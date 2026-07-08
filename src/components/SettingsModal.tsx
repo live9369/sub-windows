@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import type { AppSettings } from '@/types'
+import { useSectionNavigation } from '@/hooks/useSectionNavigation'
 
 export interface SettingsModalProps {
   open: boolean
@@ -111,7 +112,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSave,
 }) => {
   const [draft, setDraft] = React.useState<AppSettings>(settings)
-  const [activeSection, setActiveSection] = React.useState<SettingsSectionId>('general')
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const [starting, setStarting] = React.useState(false)
   const [startError, setStartError] = React.useState<string | null>(null)
@@ -125,11 +125,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [tgCode, setTgCode] = React.useState('')
   const [tgPassword, setTgPassword] = React.useState('')
 
+  const sectionIds = React.useMemo(
+    () => SETTINGS_SECTIONS.map((section) => section.id) as SettingsSectionId[],
+    [],
+  )
+  const { activeSection, jumpToSection } = useSectionNavigation<SettingsSectionId>({
+    open,
+    rootRef: contentRef,
+    sections: sectionIds,
+    initialSection: 'general',
+    resolveElementId: (section) => `settings-${section}`,
+  })
+
   React.useEffect(() => {
     if (open) {
       setDraft(settings)
       setStartError(null)
-      setActiveSection('general')
     }
   }, [open, settings])
 
@@ -250,43 +261,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ? { label: '已配置', variant: 'amber' as const }
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
-
-  const jumpToSection = (id: SettingsSectionId) => {
-    setActiveSection(id)
-    const target = contentRef.current?.querySelector(`#settings-${id}`) as HTMLElement | null
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  React.useEffect(() => {
-    if (!open) return
-    const root = contentRef.current
-    if (!root) return
-
-    const elements = SETTINGS_SECTIONS
-      .map((s) => root.querySelector(`#settings-${s.id}`) as HTMLElement | null)
-      .filter(Boolean) as HTMLElement[]
-    if (elements.length === 0) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        const top = visible[0]
-        if (!top) return
-        const id = top.target.id.replace('settings-', '') as SettingsSectionId
-        setActiveSection(id)
-      },
-      {
-        root,
-        threshold: [0.2, 0.45, 0.7],
-        rootMargin: '-8% 0px -55% 0px',
-      },
-    )
-
-    elements.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
-  }, [open])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

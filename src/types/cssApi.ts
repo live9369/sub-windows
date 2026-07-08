@@ -1,7 +1,9 @@
+import type { ChatMessage } from '@/types'
+
 export interface WechatBatch {
   groupId: string
   groupName: string
-  messages: unknown[]
+  messages: ChatMessage[]
 }
 
 export interface WechatState {
@@ -13,7 +15,14 @@ export interface WechatState {
 export interface TelegramBatch {
   groupId: string
   groupName: string
-  messages: unknown[]
+  messages: ChatMessage[]
+}
+
+export interface TelegramDialog {
+  id: string
+  name: string
+  type: 'user' | 'group' | 'channel'
+  unreadCount: number
 }
 
 export interface TelegramState {
@@ -46,8 +55,8 @@ export interface CssApi {
   telegramLogin: (phone: string) => Promise<TelegramState>
   telegramSubmitCode: (code: string) => Promise<TelegramState>
   telegramSubmitPassword: (password: string) => Promise<TelegramState>
-  telegramGetDialogs: () => Promise<any[]>
-  telegramLoadHistory: (chatId: string, limit?: number, offsetId?: number) => Promise<any[]>
+  telegramGetDialogs: () => Promise<TelegramDialog[]>
+  telegramLoadHistory: (chatId: string, limit?: number, offsetId?: number) => Promise<ChatMessage[]>
   telegramDisconnect: () => Promise<TelegramState>
   telegramStatus: () => Promise<TelegramState>
   onTelegramMessage: (cb: (data: TelegramBatch) => void) => () => any

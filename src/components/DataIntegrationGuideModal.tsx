@@ -1,5 +1,6 @@
 import * as React from 'react'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import guideMarkdown from '@/content/data-integration-guide.md?raw'
 import { BookOpen } from 'lucide-react'
 import {
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { useSectionNavigation } from '@/hooks/useSectionNavigation'
 
 export interface DataIntegrationGuideModalProps {
   open: boolean
@@ -65,58 +67,33 @@ export const DataIntegrationGuideModal: React.FC<DataIntegrationGuideModalProps>
   onOpenChange,
 }) => {
   const { intro, sections } = React.useMemo(() => parseGuide(guideMarkdown), [])
-  const [activeSectionId, setActiveSectionId] = React.useState<string>(sections[0]?.id || '')
   const contentRef = React.useRef<HTMLDivElement | null>(null)
+  const sectionIds = React.useMemo(() => sections.map((section) => section.id), [sections])
+  const initialSection = sectionIds[0] || ''
+  const { activeSection: activeSectionId, jumpToSection } = useSectionNavigation<string>({
+    open,
+    rootRef: contentRef,
+    sections: sectionIds,
+    initialSection,
+    resolveElementId: (section) => section,
+  })
 
-  React.useEffect(() => {
-    if (!open) return
-    setActiveSectionId(sections[0]?.id || '')
-  }, [open, sections])
-
-  React.useEffect(() => {
-    if (!open) return
-    const root = contentRef.current
-    if (!root) return
-    const elements = sections
-      .map((s) => root.querySelector(`#${s.id}`) as HTMLElement | null)
-      .filter(Boolean) as HTMLElement[]
-    if (elements.length === 0) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        const top = visible[0]
-        if (top) setActiveSectionId(top.target.id)
-      },
-      { root, threshold: [0.2, 0.5, 0.8], rootMargin: '-8% 0px -55% 0px' },
-    )
-    elements.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
-  }, [open, sections])
-
-  const jumpToSection = (id: string) => {
-    setActiveSectionId(id)
-    const target = contentRef.current?.querySelector(`#${id}`) as HTMLElement | null
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const markdownComponents = {
-    h3: ({ children }: any) => <h3 className="text-sm font-semibold text-zinc-100 mt-4 mb-2">{children}</h3>,
-    p: ({ children }: any) => <p className="text-xs text-zinc-400 leading-relaxed mb-2">{children}</p>,
-    ul: ({ children }: any) => <ul className="list-disc pl-5 text-xs text-zinc-400 space-y-1 mb-2">{children}</ul>,
-    li: ({ children }: any) => <li>{children}</li>,
-    blockquote: ({ children }: any) => (
+  const markdownComponents: Components = {
+    h3: ({ children }) => <h3 className="text-sm font-semibold text-zinc-100 mt-4 mb-2">{children}</h3>,
+    p: ({ children }) => <p className="text-xs text-zinc-400 leading-relaxed mb-2">{children}</p>,
+    ul: ({ children }) => <ul className="list-disc pl-5 text-xs text-zinc-400 space-y-1 mb-2">{children}</ul>,
+    li: ({ children }) => <li>{children}</li>,
+    blockquote: ({ children }) => (
       <blockquote className="border-l-2 border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 rounded-r mb-3">
         {children}
       </blockquote>
     ),
-    pre: ({ children }: any) => (
+    pre: ({ children }) => (
       <pre className="text-[11px] font-mono rounded-md bg-black/40 border border-zinc-800 px-2 py-1.5 overflow-x-auto text-zinc-200 mb-2">
         {children}
       </pre>
     ),
-    code: ({ children, className }: any) => (
+    code: ({ children, className }) => (
       <code
         className={
           className
