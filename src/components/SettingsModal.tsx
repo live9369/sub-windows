@@ -295,7 +295,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         onClose={() => onOpenChange(false)}
       >
         <DialogHeader>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 pr-10">
             <div className="flex items-center gap-2">
               <DialogTitle>应用设置</DialogTitle>
               <Badge variant="amber">PHASE 2 · WECHAT</Badge>

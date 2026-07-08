@@ -1,5 +1,7 @@
 import * as React from 'react'
-import { AlertTriangle, MonitorSmartphone, Server, Shield } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import guideMarkdown from '@/content/data-integration-guide.md?raw'
+import { BookOpen } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,26 +16,126 @@ export interface DataIntegrationGuideModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-const Step: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 space-y-2">
-    <div className="text-xs font-semibold text-zinc-200">{title}</div>
-    <div className="text-xs text-zinc-400 leading-relaxed">{children}</div>
-  </div>
-)
+type GuideSection = {
+  id: string
+  title: string
+  body: string
+}
 
-const Cmd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <pre className="text-[11px] font-mono rounded-md bg-black/40 border border-zinc-800 px-2 py-1.5 overflow-x-auto text-zinc-200">
-    {children}
-  </pre>
-)
+function toId(title: string, index: number) {
+  return `guide-${index}-${title.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')}`
+}
+
+function parseGuide(markdown: string): { intro: string; sections: GuideSection[] } {
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n')
+  const sections: GuideSection[] = []
+  const introLines: string[] = []
+
+  let current: { title: string; lines: string[] } | null = null
+
+  for (const line of lines) {
+    if (line.startsWith('### ')) {
+      if (current) {
+        sections.push({
+          id: toId(current.title, sections.length + 1),
+          title: current.title,
+          body: current.lines.join('\n').trim(),
+        })
+      }
+      current = { title: line.replace(/^###\s+/, '').trim(), lines: [] }
+      continue
+    }
+    if (current) current.lines.push(line)
+    else introLines.push(line)
+  }
+
+  if (current) {
+    sections.push({
+      id: toId(current.title, sections.length + 1),
+      title: current.title,
+      body: current.lines.join('\n').trim(),
+    })
+  }
+
+  return { intro: introLines.join('\n').trim(), sections }
+}
 
 export const DataIntegrationGuideModal: React.FC<DataIntegrationGuideModalProps> = ({
   open,
   onOpenChange,
 }) => {
+  const { intro, sections } = React.useMemo(() => parseGuide(guideMarkdown), [])
+  const [activeSectionId, setActiveSectionId] = React.useState<string>(sections[0]?.id || '')
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    setActiveSectionId(sections[0]?.id || '')
+  }, [open, sections])
+
+  React.useEffect(() => {
+    if (!open) return
+    const root = contentRef.current
+    if (!root) return
+    const elements = sections
+      .map((s) => root.querySelector(`#${s.id}`) as HTMLElement | null)
+      .filter(Boolean) as HTMLElement[]
+    if (elements.length === 0) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        const top = visible[0]
+        if (top) setActiveSectionId(top.target.id)
+      },
+      { root, threshold: [0.2, 0.5, 0.8], rootMargin: '-8% 0px -55% 0px' },
+    )
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [open, sections])
+
+  const jumpToSection = (id: string) => {
+    setActiveSectionId(id)
+    const target = contentRef.current?.querySelector(`#${id}`) as HTMLElement | null
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const markdownComponents = {
+    h3: ({ children }: any) => <h3 className="text-sm font-semibold text-zinc-100 mt-4 mb-2">{children}</h3>,
+    p: ({ children }: any) => <p className="text-xs text-zinc-400 leading-relaxed mb-2">{children}</p>,
+    ul: ({ children }: any) => <ul className="list-disc pl-5 text-xs text-zinc-400 space-y-1 mb-2">{children}</ul>,
+    li: ({ children }: any) => <li>{children}</li>,
+    blockquote: ({ children }: any) => (
+      <blockquote className="border-l-2 border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 rounded-r mb-3">
+        {children}
+      </blockquote>
+    ),
+    pre: ({ children }: any) => (
+      <pre className="text-[11px] font-mono rounded-md bg-black/40 border border-zinc-800 px-2 py-1.5 overflow-x-auto text-zinc-200 mb-2">
+        {children}
+      </pre>
+    ),
+    code: ({ children, className }: any) => (
+      <code
+        className={
+          className
+            ? className
+            : 'px-1 py-0.5 rounded bg-zinc-800/80 text-zinc-200 text-[11px] font-mono'
+        }
+      >
+        {children}
+      </code>
+    ),
+    hr: () => <hr className="border-zinc-800 my-3" />,
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto" onClose={() => onOpenChange(false)}>
+      <DialogContent
+        className="max-w-[min(1200px,96vw)] h-[min(860px,calc(100vh-2rem))] flex flex-col"
+        onClose={() => onOpenChange(false)}
+      >
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>数据接入向导</DialogTitle>
@@ -44,88 +146,41 @@ export const DataIntegrationGuideModal: React.FC<DataIntegrationGuideModalProps>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="rounded-lg border border-amber-700/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-            <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 mt-0.5 shrink-0" />
-              <div>
-                <div className="font-semibold">微信数据安全策略（固定）</div>
-                <div className="mt-1 text-amber-100/90">
-                  WeChat 数据依赖本地解密与本地进程访问，属于敏感数据链路。请在本机启动后端并在设置里填写本地地址，
-                  不要把微信原始数据或解密库部署到公网服务。
-                </div>
+        <div className="grid grid-cols-12 gap-3 flex-1 min-h-0 overflow-hidden">
+          <aside className="col-span-4 md:col-span-3 h-full overflow-hidden pr-1">
+            <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => jumpToSection(section.id)}
+                  className={`w-full text-left rounded-lg px-2.5 py-2 transition-colors ${
+                    activeSectionId === section.id
+                      ? 'bg-emerald-500/15 border border-emerald-500/30'
+                      : 'hover:bg-zinc-800/70 border border-transparent'
+                  }`}
+                >
+                  <div className="text-xs font-medium text-zinc-200 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-zinc-500" />
+                    {section.title}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <div ref={contentRef} className="col-span-8 md:col-span-9 h-full space-y-4 overflow-y-auto pr-1">
+            {intro && (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                <ReactMarkdown components={markdownComponents}>{intro}</ReactMarkdown>
               </div>
-            </div>
-          </div>
-
-          <Step title="1) 启动前端">
-            <div className="mb-1">在前端项目目录启动：</div>
-            <Cmd>npm run dev</Cmd>
-            <div className="mt-1">打开右上角设置页，按下述步骤接入数据源。</div>
-          </Step>
-
-          <Step title="2) 接入 WeChat（本地后端，必走本机）">
-            <div>先在本地后端目录启动微信服务（示例）：</div>
-            <Cmd>python main.py</Cmd>
-            <div className="mt-1">设置页填写：</div>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>启用微信监控：开启</li>
-              <li>服务地址：`http://localhost:5678`（或你本机端口）</li>
-              <li>轮询间隔：建议 2000~5000ms</li>
-            </ul>
-            <div className="mt-1">点击“测试连接”，成功后到左侧 `WX` 标签添加群卡片。</div>
-          </Step>
-
-          <Step title="3) 接入 Telegram 用户客户端（桌面桥接）">
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>填写 API ID / API Hash / 手机号</li>
-              <li>先点“连接”，再点“登录”</li>
-              <li>按提示输入验证码 / 二次密码</li>
-            </ul>
-            <div className="mt-1">状态变为 connected 后会自动拉取对话列表。</div>
-          </Step>
-
-          <Step title="4) 接入 X / Twitter WSS">
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>启用 WSS 推送：开启</li>
-              <li>WSS 地址：`wss://...`</li>
-              <li>Token：你的鉴权令牌</li>
-            </ul>
-            <div className="mt-1">连接成功后，右侧 X Tab 会持续出现实时卡片。</div>
-          </Step>
-
-          <Step title="5) 接入 BlockBeats 新闻">
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>启用新闻监控：开启</li>
-              <li>API Key：填入你的 Key</li>
-            </ul>
-            <div className="mt-1">成功后新闻 Tab 会定时刷新 RSS。</div>
-          </Step>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-400">
-            <div className="flex items-center gap-2 text-zinc-300 mb-1">
-              <MonitorSmartphone className="w-3.5 h-3.5" />
-              运行形态说明
-            </div>
-            <div>桌面版：可用本地桥接能力（WeChat / Telegram / WSS）。</div>
-            <div>Web 版（如 Vercel）：页面可运行，但本地桥接能力需改为远端 API（WeChat 仍建议只本地）。</div>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-400">
-            <div className="flex items-center gap-2 text-zinc-300 mb-1">
-              <Server className="w-3.5 h-3.5" />
-              常见排障
-            </div>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>WeChat 连不上：先访问 `http://localhost:5678/api/history?limit=1` 自检。</li>
-              <li>Telegram 报错：优先检查 API ID/API Hash 与 2FA。</li>
-              <li>Twitter 一直重连：检查 WSS 地址、Token 和服务端 connected 回执。</li>
-            </ul>
-          </div>
-
-          <div className="text-[11px] text-zinc-500 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            如需部署到 Vercel，建议保留桌面版并行，前端逐步切到 Web API 数据源。
+            )}
+            {sections.map((section) => (
+              <section id={section.id} key={section.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                <h3 className="text-xs font-semibold text-zinc-100 mb-2">{section.title}</h3>
+                <ReactMarkdown components={markdownComponents}>{section.body}</ReactMarkdown>
+              </section>
+            ))}
           </div>
         </div>
       </DialogContent>
