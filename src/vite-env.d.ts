@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { CssApi } from '../electron/preload'
+import type { CssApi } from './types/cssApi'
 
 declare global {
   interface Window {

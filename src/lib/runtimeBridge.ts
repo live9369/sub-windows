@@ -1,4 +1,4 @@
-import type { CssApi } from '../../electron/preload'
+import type { CssApi } from '@/types/cssApi'
 
 const noopUnsub = () => ({} as any)
 
