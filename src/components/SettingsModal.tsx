@@ -26,7 +26,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -296,9 +295,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         onClose={() => onOpenChange(false)}
       >
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <DialogTitle>应用设置</DialogTitle>
-            <Badge variant="amber">PHASE 2 · WECHAT</Badge>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <DialogTitle>应用设置</DialogTitle>
+              <Badge variant="amber">PHASE 2 · WECHAT</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                取消
+              </Button>
+              <Button variant="neon" onClick={handleSave}>
+                <Save className="w-3.5 h-3.5" />
+                保存
+              </Button>
+            </div>
           </div>
           <DialogDescription>
             按数据源分区配置连接参数。建议从上到下逐步完成，每个数据源都提供来源说明与接入指引。
@@ -735,15 +745,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-          <Button variant="neon" onClick={handleSave}>
-            <Save className="w-3.5 h-3.5" />
-            保存
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
