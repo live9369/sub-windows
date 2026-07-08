@@ -291,7 +291,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(1200px,96vw)]" onClose={() => onOpenChange(false)}>
+      <DialogContent
+        className="max-w-[min(1200px,96vw)] h-[min(860px,calc(100vh-2rem))] flex flex-col"
+        onClose={() => onOpenChange(false)}
+      >
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>应用设置</DialogTitle>
@@ -302,7 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-12 gap-3 h-[70vh] overflow-hidden">
+        <div className="grid grid-cols-12 gap-3 flex-1 min-h-0 overflow-hidden">
           <aside className="col-span-4 md:col-span-3 h-full overflow-hidden pr-1">
             <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
               {SETTINGS_SECTIONS.map((section) => (
@@ -732,7 +735,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             取消
           </Button>
