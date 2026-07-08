@@ -10,6 +10,7 @@ import { useWechatMessages } from '@/hooks/useWechatMessages'
 import { useBinancePrices } from '@/hooks/useBinancePrices'
 import { useBlockbeatsNews } from '@/hooks/useBlockbeatsNews'
 import { useTwitterStream } from '@/hooks/useTwitterStream'
+import { useBinanceSquareFeed } from '@/hooks/useBinanceSquareFeed'
 import {
   DEFAULT_TOKEN_PRESETS,
   parseTokenPresets,
@@ -37,6 +38,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   tokenPresets: '',
   blockbeatsEnabled: false,
   blockbeatsApiKey: '',
+  binanceSquareEnabled: false,
+  binanceSquareCurl: '',
   gmgnApiKey: '',
   twitterWsEnabled: false,
   twitterWsUrl: '',
@@ -82,6 +85,12 @@ export default function App() {
     token: settings.twitterWsToken,
   })
 
+  const binanceSquare = useBinanceSquareFeed({
+    enabled: settings.binanceSquareEnabled,
+    curlCommand: settings.binanceSquareCurl,
+    intervalMs: 30000,
+  })
+
   // Load persisted settings on mount
   React.useEffect(() => {
     window.cssApi!.loadSettings().then((saved: unknown) => {
@@ -98,6 +107,7 @@ export default function App() {
       void wechat.refreshGroups()
     }
     void binance.refresh()
+    void binanceSquare.refresh()
     void blockbeats.refresh()
     window.setTimeout(() => setRefreshing(false), 700)
   }
@@ -151,6 +161,8 @@ export default function App() {
               globalQuery={globalQuery}
               refreshTick={refreshTick}
               newsItems={blockbeats.items}
+              binanceItems={binanceSquare.items}
+              binanceStatus={binanceSquare.status}
               twitterItems={twitter.items}
               twitterStatus={twitter.status}
             />

@@ -35,6 +35,11 @@ export interface TwitterState {
   error?: string
 }
 
+export interface BinanceSquareState {
+  state: string
+  error?: string
+}
+
 export interface CssApi {
   openExternal: (url: string) => Promise<boolean>
   copyText: (text: string) => Promise<boolean>
@@ -65,6 +70,7 @@ export interface CssApi {
   onTelegramNeedPassword: (cb: () => void) => () => any
 
   blockbeatsFetch: (apiKey: string, page?: number, size?: number) => Promise<string>
+  binanceSquareFetch: (curlCommand: string) => Promise<string>
 
   gmgnTokenInfo: (chain: string, address: string, apiKey?: string) => Promise<unknown>
 

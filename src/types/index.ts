@@ -97,6 +97,8 @@ export interface AppSettings {
   tokenPresets: string
   blockbeatsEnabled: boolean
   blockbeatsApiKey: string
+  binanceSquareEnabled: boolean
+  binanceSquareCurl: string
   gmgnApiKey: string
   twitterWsEnabled: boolean
   twitterWsUrl: string

@@ -58,6 +58,7 @@ const webShim: CssApi = {
   onTelegramNeedPassword: () => noopUnsub,
 
   blockbeatsFetch: async () => unsupported('blockbeatsFetch'),
+  binanceSquareFetch: async () => unsupported('binanceSquareFetch'),
 
   gmgnTokenInfo: () => unsupported('gmgnTokenInfo'),
 

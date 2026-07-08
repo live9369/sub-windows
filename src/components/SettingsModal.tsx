@@ -57,7 +57,7 @@ const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string; hint: string }[
   { id: 'general', label: '通用参数', hint: 'Bot / Dex / 刷新' },
   { id: 'telegram', label: 'Telegram', hint: 'MTProto 登录' },
   { id: 'wechat', label: '微信监控', hint: '本地敏感链路' },
-  { id: 'binance', label: '币安广场', hint: '公开行情流' },
+  { id: 'binance', label: '币安广场', hint: '手动 curl 抓取' },
   { id: 'twitter', label: 'X / Twitter', hint: 'WSS 推送' },
   { id: 'blockbeats', label: 'BlockBeats', hint: '新闻 RSS' },
   { id: 'gmgn', label: 'GMGN', hint: 'Token 扩展信息' },
@@ -265,10 +265,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
 
-  const binanceStatusUi = {
-    label: '已启用',
-    variant: 'neon' as const,
-  }
+  const binanceStatusUi = draft.binanceSquareEnabled
+    ? draft.binanceSquareCurl.trim()
+      ? { label: '已配置', variant: 'amber' as const }
+      : { label: '待补全', variant: 'red' as const }
+    : { label: '未启用', variant: 'muted' as const }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -620,25 +621,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div id="settings-binance">
           <DataSourceCard
-            title="币安广场 / 行情流"
-            subtitle="内置公开行情数据源，用于右侧币安信息流与底部价格栏。"
-            source="Binance 公共市场接口（无需 API Key）"
+            title="币安广场（推文源）"
+            subtitle="该数据源不是币安公开行情接口。可直接粘贴浏览器抓到的 curl 请求。"
+            source="你手动获取的 Binance Square 请求（curl）"
             statusLabel={binanceStatusUi.label}
             statusVariant={binanceStatusUi.variant}
           >
             <div className="text-[11px] text-zinc-500 flex items-center gap-1">
               <Coins className="w-3.5 h-3.5" />
-              该数据源默认启用，无需额外账号或密钥。
+              建议直接粘贴完整 curl（包含 header / cookie / data-raw），主进程会按原样执行。
             </div>
             <FieldRow
-              icon={<Timer className="w-3.5 h-3.5" />}
-              label="展示刷新参考"
-              hint="当前客户端内置约 10 秒刷新"
+              icon={<Wifi className="w-3.5 h-3.5" />}
+              label="启用币安广场拉取"
+              hint="轮询获取最新广场内容"
             >
-              <Input
-                value="内置自动刷新（无需配置）"
-                readOnly
-                className="text-zinc-500"
+              <div className="flex items-center h-8">
+                <Switch
+                  checked={draft.binanceSquareEnabled}
+                  onCheckedChange={(v) => update('binanceSquareEnabled', v)}
+                />
+              </div>
+            </FieldRow>
+            <FieldRow
+              icon={<Server className="w-3.5 h-3.5" />}
+              label="curl 请求"
+              hint="可多行粘贴"
+            >
+              <textarea
+                className="w-full min-h-[140px] rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                placeholder="curl 'https://www.binance.com/bapi/...'"
+                value={draft.binanceSquareCurl}
+                onChange={(e) => update('binanceSquareCurl', e.target.value)}
               />
             </FieldRow>
           </DataSourceCard>

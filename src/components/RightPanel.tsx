@@ -9,6 +9,8 @@ export interface RightPanelProps {
   globalQuery?: string
   refreshTick?: number
   newsItems?: FeedItem[]
+  binanceItems?: FeedItem[]
+  binanceStatus?: string
   twitterItems?: FeedItem[]
   twitterStatus?: string
 }
@@ -23,6 +25,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   globalQuery,
   refreshTick,
   newsItems = [],
+  binanceItems = [],
+  binanceStatus,
   twitterItems = [],
   twitterStatus,
 }) => {
@@ -64,7 +68,33 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     }
     for (const i of MOCK_FEED) {
       if (i.source === 'x' && (twitterItems.length > 0 || twitterStatus !== 'idle')) continue
+      if (i.source === 'binance' && (binanceItems.length > 0 || binanceStatus !== 'idle')) continue
       out[i.source].push(i)
+    }
+    // Replace mock Binance with real Binance Square feed
+    if (binanceItems.length > 0) {
+      out.binance = binanceItems
+    } else if (binanceStatus && binanceStatus !== 'idle') {
+      const statusText =
+        binanceStatus === 'connecting'
+          ? '正在拉取币安广场数据…'
+          : binanceStatus === 'error'
+            ? '拉取失败，请检查设置中的 curl 命令是否有效'
+            : '已连接，等待下一次轮询…'
+      out.binance = [
+        {
+          id: 'binance-status-placeholder',
+          source: 'binance',
+          author: '系统',
+          handle: '@system',
+          avatarColor: 'bg-zinc-800 text-zinc-500',
+          avatarLabel: 'SYS',
+          time: '',
+          content: statusText,
+          link: '',
+          category: binanceStatus === 'error' ? 'ERROR' : 'CONNECTING',
+        },
+      ]
     }
     // Replace mock X with real Twitter stream
     if (twitterItems.length > 0) {
@@ -95,7 +125,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     // Replace mock news with real BlockBeats news
     out.news = newsItems.length > 0 ? newsItems : out.news
     return out
-  }, [newsItems, twitterItems, twitterStatus])
+  }, [binanceItems, binanceStatus, newsItems, twitterItems, twitterStatus])
 
   return (
     <section className="flex flex-col h-full min-h-0 bg-zinc-950">
@@ -144,6 +174,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               footerLabel={
                 t.value === 'x' && twitterItems.length > 0
                   ? 'WSS 实时流'
+                  : t.value === 'binance' && binanceItems.length > 0
+                    ? 'Binance Square'
                   : t.value === 'news' && newsItems.length > 0
                     ? 'BlockBeats'
                     : 'MOCK 数据'
