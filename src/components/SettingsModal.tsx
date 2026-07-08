@@ -302,8 +302,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-12 gap-3 max-h-[70vh]">
-          <aside className="col-span-4 md:col-span-3 overflow-y-auto pr-1">
+        <div className="grid grid-cols-12 gap-3 h-[70vh] overflow-hidden">
+          <aside className="col-span-4 md:col-span-3 h-full overflow-hidden pr-1">
             <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
               {SETTINGS_SECTIONS.map((section) => (
                 <button
@@ -323,7 +323,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </aside>
 
-          <div ref={contentRef} className="col-span-8 md:col-span-9 space-y-4 overflow-y-auto pr-1">
+          <div ref={contentRef} className="col-span-8 md:col-span-9 h-full space-y-4 overflow-y-auto pr-1">
             <div id="settings-general">
           <DataSourceCard
             title="通用参数（Telegram Bot 兼容）"

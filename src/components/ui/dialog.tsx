@@ -42,7 +42,7 @@ export const DialogContent: React.FC<{
     className={cn(
       'w-full max-w-lg mx-auto',
       'relative rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl',
-      'p-5 m-4',
+      'p-5 my-4',
       className,
     )}
   >
