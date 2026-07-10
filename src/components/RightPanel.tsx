@@ -2,7 +2,6 @@ import * as React from 'react'
 import { Newspaper, Twitter, Coins } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FeedPanel } from '@/components/FeedPanel'
-import { MOCK_FEED } from '@/data/mockData'
 import type { FeedItem, FeedSource } from '@/types'
 
 export interface RightPanelProps {
@@ -14,6 +13,7 @@ export interface RightPanelProps {
   binanceError?: string | null
   twitterItems?: FeedItem[]
   twitterStatus?: string
+  onOpenSettings?: () => void
 }
 
 const TABS: { value: FeedSource; label: string; icon: React.ReactNode }[] = [
@@ -21,6 +21,38 @@ const TABS: { value: FeedSource; label: string; icon: React.ReactNode }[] = [
   { value: 'binance', label: '币安广场', icon: <Coins className="w-3.5 h-3.5" /> },
   { value: 'news',    label: '新闻',     icon: <Newspaper className="w-3.5 h-3.5" /> },
 ]
+
+const EMPTY_HINTS: Record<FeedSource, string> = {
+  x: '在设置中填写你的 Twitter WSS 地址与 Token，由你的推送服务提供数据',
+  binance: '在设置中粘贴你的币安广场 curl（含 cookie / token），由你的账号拉取',
+  news: '在设置中启用 BlockBeats 并填写你的 API Key',
+}
+
+function statusPlaceholder(
+  source: FeedSource,
+  status: string,
+  error?: string | null,
+): FeedItem {
+  const statusText =
+    status === 'connecting'
+      ? '正在连接你的数据源…'
+      : status === 'error'
+        ? `连接失败：${error || '请检查设置中的地址与鉴权'}`
+        : '已连接，等待数据推送…'
+
+  return {
+    id: `${source}-status-placeholder`,
+    source,
+    author: '系统',
+    handle: '@system',
+    avatarColor: 'bg-zinc-800 text-zinc-500',
+    avatarLabel: 'SYS',
+    time: '',
+    content: statusText,
+    link: '',
+    category: status === 'error' ? 'ERROR' : 'CONNECTING',
+  }
+}
 
 export const RightPanel: React.FC<RightPanelProps> = ({
   globalQuery,
@@ -31,13 +63,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   binanceError,
   twitterItems = [],
   twitterStatus,
+  onOpenSettings,
 }) => {
   const [active, setActive] = React.useState<FeedSource>('x')
   const [unreadNews, setUnreadNews] = React.useState(0)
   const seenNewsIdsRef = React.useRef<Set<string>>(new Set())
   const hasInitRef = React.useRef(false)
 
-  // Track unread news when new items arrive
   React.useEffect(() => {
     if (newsItems.length === 0) {
       hasInitRef.current = false
@@ -54,9 +86,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       setUnreadNews((prev) => prev + newIds.length)
     }
     seenNewsIdsRef.current = currentIds
-  }, [newsItems])
+  }, [newsItems, active])
 
-  // Clear unread when switching to news tab
   const handleTabChange = (v: FeedSource) => {
     setActive(v)
     if (v === 'news') {
@@ -68,66 +99,24 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     const out: Record<FeedSource, FeedItem[]> = {
       x: [], binance: [], news: [],
     }
-    for (const i of MOCK_FEED) {
-      if (i.source === 'x' && (twitterItems.length > 0 || twitterStatus !== 'idle')) continue
-      if (i.source === 'binance' && (binanceItems.length > 0 || binanceStatus !== 'idle')) continue
-      out[i.source].push(i)
-    }
-    // Replace mock Binance with real Binance Square feed
-    if (binanceItems.length > 0) {
-      out.binance = binanceItems
-    } else if (binanceStatus && binanceStatus !== 'idle') {
-      const statusText =
-        binanceStatus === 'connecting'
-          ? '正在拉取币安广场数据…'
-          : binanceStatus === 'error'
-            ? `拉取失败：${binanceError || '请检查 curl / cookie / token 是否有效'}`
-            : '已连接，等待下一次轮询…'
-      out.binance = [
-        {
-          id: 'binance-status-placeholder',
-          source: 'binance',
-          author: '系统',
-          handle: '@system',
-          avatarColor: 'bg-zinc-800 text-zinc-500',
-          avatarLabel: 'SYS',
-          time: '',
-          content: statusText,
-          link: '',
-          category: binanceStatus === 'error' ? 'ERROR' : 'CONNECTING',
-        },
-      ]
-    }
-    // Replace mock X with real Twitter stream
+
     if (twitterItems.length > 0) {
       out.x = twitterItems
     } else if (twitterStatus && twitterStatus !== 'idle') {
-      // WSS enabled but no items yet — show status placeholder
-      const statusText =
-        twitterStatus === 'connecting'
-          ? '正在连接 Twitter WSS 服务器…'
-          : twitterStatus === 'error'
-            ? '连接失败，请检查 WSS 地址和 Token'
-            : '已连接，等待服务器推送 tweet…'
-      out.x = [
-        {
-          id: 'twitter-status-placeholder',
-          source: 'x',
-          author: '系统',
-          handle: '@system',
-          avatarColor: 'bg-zinc-800 text-zinc-500',
-          avatarLabel: 'SYS',
-          time: '',
-          content: statusText,
-          link: '',
-          category: twitterStatus === 'error' ? 'ERROR' : 'CONNECTING',
-        },
-      ]
+      out.x = [statusPlaceholder('x', twitterStatus)]
     }
-    // Replace mock news with real BlockBeats news
-    out.news = newsItems.length > 0 ? newsItems : out.news
+
+    if (binanceItems.length > 0) {
+      out.binance = binanceItems
+    } else if (binanceStatus && binanceStatus !== 'idle') {
+      out.binance = [statusPlaceholder('binance', binanceStatus, binanceError)]
+    }
+
+    out.news = newsItems
     return out
   }, [binanceError, binanceItems, binanceStatus, newsItems, twitterItems, twitterStatus])
+
+  const totalItems = itemsBySource.x.length + itemsBySource.binance.length + itemsBySource.news.length
 
   return (
     <section className="flex flex-col h-full min-h-0 bg-zinc-950">
@@ -137,7 +126,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <h2 className="text-sm font-semibold text-zinc-100">信息流</h2>
         </div>
         <div className="text-[10px] font-mono text-zinc-500">
-          {MOCK_FEED.length} ITEMS
+          {totalItems} ITEMS
         </div>
       </div>
 
@@ -173,14 +162,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               items={itemsBySource[t.value]}
               globalQuery={globalQuery}
               refreshTick={refreshTick}
+              emptyHint={EMPTY_HINTS[t.value]}
+              onOpenSettings={onOpenSettings}
               footerLabel={
                 t.value === 'x' && twitterItems.length > 0
-                  ? 'WSS 实时流'
+                  ? '你的 WSS 流'
                   : t.value === 'binance' && binanceItems.length > 0
-                    ? 'Binance Square'
-                  : t.value === 'news' && newsItems.length > 0
-                    ? 'BlockBeats'
-                    : 'MOCK 数据'
+                    ? '你的币安广场'
+                    : t.value === 'news' && newsItems.length > 0
+                      ? '你的 BlockBeats'
+                      : undefined
               }
             />
           </TabsContent>

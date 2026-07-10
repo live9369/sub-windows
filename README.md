@@ -1,14 +1,24 @@
-# Crypto Side Screen — 加密副屏工具
+# Crypto Side Screen — 加密副屏前端框架
 
-> 竖向分屏的 Telegram alpha + 社交信号监控面板，专为副屏 / 第二显示器设计。
-> 一眼掌握 6 个 alpha 群、X、币安广场、新闻的多窗格实时流。
+> 竖向分屏的 alpha / 社交信号监控面板，专为副屏 / 第二显示器设计。  
+> **定位：前端展示框架** — 不提供共享数据，每位用户自行部署后端并填入自己的连接参数。
 
-**Phase 1**：纯前端 UI（模拟数据）。
-**Phase 2**：微信只读数据聚合（wechat-decrypt）已接入，支持微信群实时监控、CA/市值高亮、设置持久化。
+一眼掌握群聊、X、币安广场、新闻等多窗格实时流——数据全部来自**你自己的**数据源。
 
 ---
 
-## 功能（Phase 1）
+## 产品模型
+
+| 我们提供 | 用户自备 |
+|---------|---------|
+| 分屏 UI、卡片布局、过滤与高亮 | wechat-decrypt / 微信 HTTP API |
+| Web + 桌面双端运行 | Telegram Bot 推送服务（WS/SSE） |
+| 设置持久化（localStorage / 本地文件） | 币安广场 curl、BlockBeats API Key |
+| 数据接入向导 | Twitter WSS、GMGN API Key 等 |
+
+首次打开界面为空是预期行为；在「设置」或「数据接入向导」中完成至少一路接入后，主界面才会出现实时内容。
+
+---
 
 ### 左侧群聊面板（默认 65%，可拖拽）
 
@@ -127,7 +137,7 @@ crypto-side-screen/
 │   ├── hooks/
 │   │   └── useWechatMessages.ts # 渲染进程订阅 IPC、聚合微信消息
 │   ├── data/
-│   │   └── mockData.ts          # 6 个 TG mock 群 + ~50 条消息 + feed 数据
+│   │   └── mockData.ts          # 开发参考用示例数据（主界面默认不展示）
 │   └── components/
 │       ├── TopBar.tsx
 │       ├── SplitPane.tsx        # 可拖动分屏（双击复位）

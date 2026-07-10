@@ -55,7 +55,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             Crypto Side Screen
           </span>
           <span className="text-[10px] text-zinc-500 font-mono">
-            v0.1 · degen monitor
+            v0.1 · 自备数据源
           </span>
         </div>
       </div>

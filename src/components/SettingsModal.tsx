@@ -322,8 +322,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <DialogHeader>
           <div className="flex items-center justify-between gap-3 pr-10">
             <div className="flex items-center gap-2">
-              <DialogTitle>应用设置</DialogTitle>
-              <Badge variant="amber">PHASE 2 · WECHAT</Badge>
+              <DialogTitle>数据源设置</DialogTitle>
+              <Badge variant="cyan">自备数据源</Badge>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -336,7 +336,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
           <DialogDescription>
-            按数据源分区配置连接参数。建议从上到下逐步完成，每个数据源都提供来源说明与接入指引。
+            本产品是前端展示框架，不包含任何共享数据。请在下方填写你自己的服务地址、Token 与鉴权信息。
           </DialogDescription>
         </DialogHeader>
 

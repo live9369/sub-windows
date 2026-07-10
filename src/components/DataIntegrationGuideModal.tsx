@@ -116,10 +116,10 @@ export const DataIntegrationGuideModal: React.FC<DataIntegrationGuideModalProps>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>数据接入向导</DialogTitle>
-            <Badge variant="cyan">Route A</Badge>
+            <Badge variant="cyan">自备数据源</Badge>
           </div>
           <DialogDescription>
-            前端可同时运行在 Web 与桌面版；微信数据只允许本地后端接入，不走远程托管。
+            前端框架只负责展示；每个用户自行部署并接入自己的后端、Bot、WSS 与 API Key。
           </DialogDescription>
         </DialogHeader>
 

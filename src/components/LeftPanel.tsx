@@ -3,7 +3,6 @@ import { MessageSquare, Plus, Inbox, WifiOff, Settings } from 'lucide-react'
 import { GroupCard } from '@/components/GroupCard'
 import { WechatOnboarding } from '@/components/WechatOnboarding'
 import { Popover } from '@/components/ui/popover'
-import { MOCK_GROUPS, MOCK_MESSAGES } from '@/data/mockData'
 import { cn } from '@/lib/utils'
 import type { ChatMessage, MonitoredGroup } from '@/types'
 
@@ -45,29 +44,20 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 }) => {
   const [sourceTab, setSourceTab] = React.useState<SourceTab>('telegram')
   const [layout, setLayout] = React.useState<LayoutId>('3col')
-  const [activeIds, setActiveIds] = React.useState<string[]>(MOCK_GROUPS.map((g) => g.id))
-  const [focusedId, setFocusedId] = React.useState<string>(MOCK_GROUPS[0].id)
+  const [activeIds, setActiveIds] = React.useState<string[]>([])
+  const [focusedId, setFocusedId] = React.useState<string>('')
   const [addOpen, setAddOpen] = React.useState(false)
   const addBtnRef = React.useRef<HTMLButtonElement | null>(null)
 
-  const hasRealTelegram = React.useMemo(
-    () => wxGroups.some((g) => g.source === 'telegram' && g.id.startsWith('tg-bot-')),
-    [wxGroups],
-  )
-  const allGroups = React.useMemo(
-    () => [...(hasRealTelegram ? [] : MOCK_GROUPS), ...wxGroups],
-    [hasRealTelegram, wxGroups],
-  )
+  const allGroups = wxGroups
 
   React.useEffect(() => {
-    const discoveredTelegramIds = allGroups
-      .filter((g) => g.source === 'telegram')
-      .map((g) => g.id)
-    if (discoveredTelegramIds.length === 0) return
+    const discoveredIds = allGroups.map((g) => g.id)
+    if (discoveredIds.length === 0) return
     setActiveIds((prev) => {
       const next = [...prev]
       let changed = false
-      for (const id of discoveredTelegramIds) {
+      for (const id of discoveredIds) {
         if (!next.includes(id)) {
           next.push(id)
           changed = true
@@ -75,20 +65,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       }
       return changed ? next : prev
     })
+    setFocusedId((prev) => prev || discoveredIds[0])
   }, [allGroups])
 
-  const messagesByGroup = React.useMemo(() => {
-    const map: Record<string, ChatMessage[]> = {}
-    if (!hasRealTelegram) {
-      for (const g of MOCK_GROUPS) {
-        map[g.id] = MOCK_MESSAGES.filter((m) => m.groupId === g.id)
-      }
-    }
-    Object.entries(wxMessagesByGroup).forEach(([id, msgs]) => {
-      map[id] = msgs
-    })
-    return map
-  }, [hasRealTelegram, wxMessagesByGroup])
+  const messagesByGroup = wxMessagesByGroup
 
   const groupMap = React.useMemo(() => {
     const m: Record<string, MonitoredGroup> = {}
@@ -121,10 +101,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     .filter((g): g is MonitoredGroup => !!g && visibleGroups.some((vg) => vg.id === g.id))
 
   // Focus mode: thumbnail rail shows all visible groups except the focused one
-  const focusedGroup = visibleGroups.find((g) => g.id === focusedId) ?? visibleGroups[0] ?? MOCK_GROUPS[0]
-  const otherGroups = visibleGroups.filter((g) => g.id !== focusedGroup.id)
+  const focusedGroup = visibleGroups.find((g) => g.id === focusedId) ?? visibleGroups[0]
+  const otherGroups = focusedGroup
+    ? visibleGroups.filter((g) => g.id !== focusedGroup.id)
+    : []
 
   const isWxOffline = sourceTab === 'wechat' && wxStatus !== 'connected'
+  const showEmpty = activeGroups.length === 0 || (layout === 'focus' && !focusedGroup)
 
   return (
     <section className="flex flex-col h-full min-h-0 border-r border-zinc-800 bg-zinc-950">
@@ -224,19 +207,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
       {/* Body */}
       <div className="flex-1 min-h-0 p-2 overflow-hidden">
-        {layout === 'focus'
-          ? (
-            <FocusLayout
-              focused={focusedGroup}
-              others={otherGroups}
-              messagesByGroup={messagesByGroup}
-              globalQuery={globalQuery}
-              refreshTick={refreshTick}
-              onSwap={(id) => setFocusedId(id)}
-              onExit={() => setLayout('3col')}
-            />
-          )
-          : activeGroups.length === 0
+        {showEmpty
             ? sourceTab === 'wechat'
               ? (
                 <WechatOnboarding
@@ -256,32 +227,44 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   onOpenSettings={onOpenSettings}
                 />
               )
-            : (
-              <div
-                className={cn(
-                  'grid gap-2 h-full overflow-y-auto pr-0.5',
-                  layout === '2col' ? 'grid-cols-2' : 'grid-cols-3',
-                  '[grid-auto-rows:minmax(220px,1fr)]',
-                )}
-              >
-                {activeGroups.map((g) => (
-                  <GroupCard
-                    key={g.id}
-                    group={g}
-                    messages={messagesByGroup[g.id] ?? []}
-                    globalQuery={globalQuery}
-                    refreshTick={refreshTick}
-                    onFocus={() => enterFocus(g.id)}
-                    onRemove={() => removeCard(g.id)}
-                    offline={g.source === 'wechat' && wxStatus !== 'connected'}
-                    offlineActions={[
-                      ...(onRetryWechat ? [{ label: '重试', onClick: onRetryWechat }] : []),
-                      ...(onOpenSettings ? [{ label: '打开设置', onClick: onOpenSettings }] : []),
-                    ]}
-                  />
-                ))}
-              </div>
-            )}
+            : layout === 'focus' && focusedGroup
+              ? (
+                <FocusLayout
+                  focused={focusedGroup}
+                  others={otherGroups}
+                  messagesByGroup={messagesByGroup}
+                  globalQuery={globalQuery}
+                  refreshTick={refreshTick}
+                  onSwap={(id) => setFocusedId(id)}
+                  onExit={() => setLayout('3col')}
+                />
+              )
+              : (
+                <div
+                  className={cn(
+                    'grid gap-2 h-full overflow-y-auto pr-0.5',
+                    layout === '2col' ? 'grid-cols-2' : 'grid-cols-3',
+                    '[grid-auto-rows:minmax(220px,1fr)]',
+                  )}
+                >
+                  {activeGroups.map((g) => (
+                    <GroupCard
+                      key={g.id}
+                      group={g}
+                      messages={messagesByGroup[g.id] ?? []}
+                      globalQuery={globalQuery}
+                      refreshTick={refreshTick}
+                      onFocus={() => enterFocus(g.id)}
+                      onRemove={() => removeCard(g.id)}
+                      offline={g.source === 'wechat' && wxStatus !== 'connected'}
+                      offlineActions={[
+                        ...(onRetryWechat ? [{ label: '重试', onClick: onRetryWechat }] : []),
+                        ...(onOpenSettings ? [{ label: '打开设置', onClick: onOpenSettings }] : []),
+                      ]}
+                    />
+                  ))}
+                </div>
+              )}
       </div>
 
       {/* Add-card popover */}
@@ -434,12 +417,14 @@ const EmptyGrid: React.FC<{
       )}
       <div>
         <p className="text-xs text-zinc-300">
-          {isWxDown ? '微信服务未连接' : '没有显示中的卡片'}
+          {isWxDown ? '微信服务未连接' : '尚未接入群聊数据源'}
         </p>
-        <p className="text-[11px] text-zinc-500 mt-0.5">
+        <p className="text-[11px] text-zinc-500 mt-0.5 max-w-xs">
           {isWxDown
-            ? (wxError || '请检查设置或在外部终端启动 python main.py')
-            : '点上方"加卡片"或切到 Focus 模式'}
+            ? (wxError || '请先在设置中填写你的 wechat-decrypt 地址并启动服务')
+            : sourceTab === 'telegram'
+              ? '在设置中配置你的 Telegram Bot 推送或 Telegram 账号，连接成功后群会自动出现'
+              : '在设置中接入你的数据源；有可用群后点「加卡片」加入监控'}
         </p>
       </div>
       <div className="flex items-center gap-2">

@@ -14,12 +14,10 @@ import { useBinanceSquareFeed } from './hooks/useBinanceSquareFeed'
 import { useTelegramMessages } from '@/hooks/useTelegramMessages'
 import { useTelegramBotPush } from '@/hooks/useTelegramBotPush'
 import {
-  DEFAULT_TOKEN_PRESETS,
   parseTokenPresets,
   serializeTokenPresets,
   type TokenPreset,
 } from '@/data/tokenPresets'
-import { MOCK_FEED, MOCK_GROUPS, MOCK_MESSAGES } from '@/data/mockData'
 import type { AppSettings } from '@/types'
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -59,10 +57,7 @@ export default function App() {
   const [refreshTick, setRefreshTick] = React.useState(0)
 
   const tokenPresets = React.useMemo(
-    () => {
-      const parsed = parseTokenPresets(settings.tokenPresets)
-      return parsed.length > 0 ? parsed : DEFAULT_TOKEN_PRESETS
-    },
+    () => parseTokenPresets(settings.tokenPresets),
     [settings.tokenPresets],
   )
 
@@ -185,6 +180,7 @@ export default function App() {
               binanceError={binanceSquare.error}
               twitterItems={twitter.items}
               twitterStatus={twitter.status}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           }
         />
@@ -195,6 +191,9 @@ export default function App() {
         prices={binance.prices}
         tokenPresets={tokenPresets}
         onUpdateTokenPresets={updateTokenPresets}
+        groupCount={leftGroups.length}
+        messageCount={Object.values(leftMessagesByGroup).reduce((n, msgs) => n + msgs.length, 0)}
+        feedCount={blockbeats.items.length + binanceSquare.items.length + twitter.items.length}
       />
 
       <SettingsModal
@@ -218,7 +217,10 @@ const StatusBar: React.FC<{
   prices: { label: string; price: number }[]
   tokenPresets: TokenPreset[]
   onUpdateTokenPresets: (next: TokenPreset[]) => void
-}> = ({ refreshing, prices, tokenPresets, onUpdateTokenPresets }) => {
+  groupCount: number
+  messageCount: number
+  feedCount: number
+}> = ({ refreshing, prices, tokenPresets, onUpdateTokenPresets, groupCount, messageCount, feedCount }) => {
   const [adding, setAdding] = React.useState(false)
   const [newSymbol, setNewSymbol] = React.useState('')
   const [newLabel, setNewLabel] = React.useState('')
@@ -248,7 +250,7 @@ const StatusBar: React.FC<{
           {refreshing ? 'SYNCING' : 'READY'}
         </span>
         <span>
-          {MOCK_GROUPS.length} GROUPS · {MOCK_MESSAGES.length} MSGS · {MOCK_FEED.length} FEED ITEMS
+          {groupCount} GROUPS · {messageCount} MSGS · {feedCount} FEED
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -269,7 +271,7 @@ const StatusBar: React.FC<{
             </span>
           ))
         ) : (
-          <span className="text-zinc-600">价格加载中…</span>
+          <span className="text-zinc-600">+ 添加 Token 查看行情</span>
         )}
 
         {adding ? (

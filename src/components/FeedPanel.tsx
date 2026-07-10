@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Inbox } from 'lucide-react'
+import { Inbox, Settings } from 'lucide-react'
 import { FeedCard } from '@/components/FeedCard'
 import type { FeedItem } from '@/types'
 
@@ -8,6 +8,8 @@ export interface FeedPanelProps {
   globalQuery?: string
   refreshTick?: number
   footerLabel?: string
+  emptyHint?: string
+  onOpenSettings?: () => void
 }
 
 export const FeedPanel: React.FC<FeedPanelProps> = ({
@@ -15,6 +17,8 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
   globalQuery,
   refreshTick,
   footerLabel,
+  emptyHint,
+  onOpenSettings,
 }) => {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -39,7 +43,22 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-6 text-zinc-500">
         <Inbox className="w-7 h-7 mb-2 text-zinc-600" />
-        <p className="text-xs">没有匹配的内容</p>
+        <p className="text-xs text-zinc-300">
+          {items.length === 0 ? '尚未接入此数据源' : '没有匹配的内容'}
+        </p>
+        {items.length === 0 && emptyHint && (
+          <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">{emptyHint}</p>
+        )}
+        {items.length === 0 && onOpenSettings && (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="mt-3 inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            打开设置
+          </button>
+        )}
       </div>
     )
   }
