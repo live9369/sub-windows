@@ -1,4 +1,12 @@
-import type { CssApi } from '@/types/cssApi'
+import type { CssApi, WechatBatch, WechatState } from '@/types/cssApi'
+import { fetchBinancePrices } from '@/lib/binanceApi'
+import { fetchBlockbeatsRss } from '@/lib/blockbeatsApi'
+import { fetchViaParsedCurl } from '@/lib/curlParser'
+import { fetchGmgnTokenInfo } from '@/lib/gmgnApi'
+import { twitterWebService } from '@/lib/twitterWebService'
+import { wechatWebService } from '@/lib/wechatWebService'
+
+const SETTINGS_KEY = 'css-app-settings'
 
 const noopUnsub = () => ({} as any)
 
@@ -16,6 +24,30 @@ function unsupported(method: string): Promise<never> {
   )
 }
 
+function loadWebSettings(): unknown {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveWebSettings(data: unknown): boolean {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data))
+    return true
+  } catch {
+    return false
+  }
+}
+
+function readGmgnApiKey(explicit?: string): string {
+  if (explicit?.trim()) return explicit.trim()
+  const settings = loadWebSettings() as { gmgnApiKey?: string } | null
+  return settings?.gmgnApiKey?.trim() || ''
+}
+
 const webShim: CssApi = {
   openExternal: async (url: string) => {
     if (typeof window !== 'undefined' && url?.startsWith('http')) {
@@ -31,18 +63,40 @@ const webShim: CssApi = {
     }
     return false
   },
-  toggleFullscreen: async () => false,
+  toggleFullscreen: async () => {
+    if (typeof document === 'undefined') return false
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen()
+        return true
+      }
+      await document.exitFullscreen()
+      return false
+    } catch {
+      return false
+    }
+  },
   platform: detectPlatform(),
 
-  loadSettings: async () => null,
-  saveSettings: async () => true,
+  loadSettings: async () => loadWebSettings(),
+  saveSettings: async (v: unknown) => saveWebSettings(v),
 
-  wechatStart: () => unsupported('wechatStart'),
-  wechatStop: async () => null,
-  wechatStatus: async () => ({ state: 'error', error: 'web 端不支持本地微信桥接' }),
-  wechatDiscover: () => unsupported('wechatDiscover'),
-  onWechatMessage: () => noopUnsub,
-  onWechatStatusChange: () => noopUnsub,
+  wechatStart: async (cfg: unknown) => {
+    const c = cfg as { baseUrl?: string; pollIntervalMs?: number }
+    await wechatWebService.start({
+      baseUrl: c?.baseUrl || 'http://localhost:5678',
+      pollIntervalMs: Number(c?.pollIntervalMs) || 3000,
+    })
+    return { ok: true }
+  },
+  wechatStop: async () => {
+    wechatWebService.stop()
+    return null
+  },
+  wechatStatus: async () => wechatWebService.getState(),
+  wechatDiscover: async (baseUrl: string) => wechatWebService.discover(baseUrl),
+  onWechatMessage: (cb: (data: WechatBatch) => void) => wechatWebService.onBatch(cb),
+  onWechatStatusChange: (cb: (state: WechatState) => void) => wechatWebService.onStatus(cb),
 
   telegramConnect: () => unsupported('telegramConnect'),
   telegramLogin: () => unsupported('telegramLogin'),
@@ -51,23 +105,38 @@ const webShim: CssApi = {
   telegramGetDialogs: () => unsupported('telegramGetDialogs'),
   telegramLoadHistory: () => unsupported('telegramLoadHistory'),
   telegramDisconnect: async () => ({ state: 'idle' }),
-  telegramStatus: async () => ({ state: 'error', error: 'web 端不支持本地 Telegram 用户客户端' }),
+  telegramStatus: async () => ({
+    state: 'idle',
+    error: 'Web 端不支持 Telegram 用户客户端（MTProto），请使用 Bot 推送流',
+  }),
   onTelegramMessage: () => noopUnsub,
   onTelegramStatusChange: () => noopUnsub,
   onTelegramNeedCode: () => noopUnsub,
   onTelegramNeedPassword: () => noopUnsub,
 
-  binancePrices: () => unsupported('binancePrices'),
-  blockbeatsFetch: async () => unsupported('blockbeatsFetch'),
-  binanceSquareFetch: async () => unsupported('binanceSquareFetch'),
+  binancePrices: async (symbols: string[]) => fetchBinancePrices(symbols),
+  blockbeatsFetch: async (apiKey: string, page = 1, size = 20) =>
+    fetchBlockbeatsRss(apiKey, page, size),
+  binanceSquareFetch: async (curlCommand: string) => fetchViaParsedCurl(curlCommand),
 
-  gmgnTokenInfo: () => unsupported('gmgnTokenInfo'),
+  gmgnTokenInfo: async (chain: string, address: string, apiKey?: string) =>
+    fetchGmgnTokenInfo(chain, address, readGmgnApiKey(apiKey)),
 
-  twitterStart: () => unsupported('twitterStart'),
-  twitterStop: async () => null,
-  twitterStatus: async () => ({ state: 'error', error: 'web 端不支持本地 Twitter WSS 桥接' }),
-  onTwitterTweet: () => noopUnsub,
-  onTwitterStatusChange: () => noopUnsub,
+  twitterStart: async (cfg: unknown) => {
+    const c = cfg as { wsUrl?: string; token?: string }
+    await twitterWebService.start({
+      wsUrl: c?.wsUrl || '',
+      token: c?.token || '',
+    })
+    return { ok: true }
+  },
+  twitterStop: async () => {
+    twitterWebService.stop()
+    return null
+  },
+  twitterStatus: async () => twitterWebService.getState(),
+  onTwitterTweet: (cb) => twitterWebService.onTweet(cb),
+  onTwitterStatusChange: (cb) => twitterWebService.onStatus(cb),
 }
 
 let shimInstalled = false

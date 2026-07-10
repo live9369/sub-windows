@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import type { AppSettings } from '@/types'
 import { useSectionNavigation } from '@/hooks/useSectionNavigation'
+import { isWebRuntime } from '@/lib/runtimeBridge'
 
 export interface SettingsModalProps {
   open: boolean
@@ -145,6 +146,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setStartSuccess(null)
     }
   }, [open, settings])
+
+  React.useEffect(() => {
+    if (!open) return
+    setStartError(null)
+    setStartSuccess(null)
+  }, [draft.wechatBaseUrl, draft.wechatPollIntervalMs, open])
 
   React.useEffect(() => {
     if (!open) return
@@ -303,6 +310,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ? { label: '已配置', variant: 'amber' as const }
       : { label: '待补全', variant: 'red' as const }
     : { label: '未启用', variant: 'muted' as const }
+
+  const webRuntime = isWebRuntime()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -534,20 +543,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div id="settings-wechat">
           <DataSourceCard
-            title="微信监控（本地敏感数据）"
-            subtitle="桌面版优先：仅支持本地后端，不建议部署到远程服务。"
-            source="本机 wechat-decrypt HTTP API（默认 localhost:5678）"
+            title="微信监控（可用链路）"
+            subtitle={
+              webRuntime
+                ? 'Web 版已支持：浏览器直连本机 wechat-decrypt（开发模式经 Vite 代理）。'
+                : '桌面版已可用：连接你手动启动的本机 wechat-decrypt 服务。'
+            }
+            source="本机 wechat-decrypt HTTP API（例如 http://localhost:5678）"
             statusLabel={wxStatusUi.label}
             statusVariant={wxStatusUi.variant}
           >
             <div className="rounded-lg border border-amber-700/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-200">
-              微信链路涉及本地解密与隐私数据，建议仅在本机运行服务并通过 localhost 接入。
+              {webRuntime
+                ? 'Web 本地开发：请先启动 wechat-decrypt，服务地址保持 http://localhost:5678；前端会通过 /__wechat 代理避免 CORS。'
+                : '微信链路涉及本地解密与隐私数据，建议仅在本机运行服务并通过 localhost 接入。'}
             </div>
 
             <FieldRow
               icon={<MessageCircle className="w-3.5 h-3.5" />}
               label="启用微信监控"
-              hint="开启后主进程连接你已手动启动的服务"
+              hint={webRuntime ? '开启后浏览器轮询本机服务' : '开启后主进程连接你已手动启动的服务'}
             >
               <div className="flex items-center h-8">
                 <Switch
@@ -572,7 +587,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <FieldRow
               icon={<Timer className="w-3.5 h-3.5" />}
               label="轮询间隔（毫秒）"
-              hint="主进程轮询 /api/history 频率"
+              hint={webRuntime ? '浏览器轮询 /api/history 频率' : '主进程轮询 /api/history 频率'}
             >
               <Input
                 type="number"
@@ -589,7 +604,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Button
                 variant="outline"
                 className="w-full"
-                disabled={!draft.wechatEnabled || starting}
+                disabled={starting}
                 onClick={handleTestConnection}
               >
                 {starting ? (

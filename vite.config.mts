@@ -56,6 +56,68 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       strictPort: true,
+      proxy: {
+        '/__wechat': {
+          target: 'http://localhost:5678',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/__wechat/, ''),
+        },
+        '/__binance': {
+          target: 'https://api.binance.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__binance/, ''),
+        },
+        '/__binance-bapi': {
+          target: 'https://www.binance.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__binance-bapi/, ''),
+        },
+        '/__blockbeats': {
+          target: 'http://api-pro.theblockbeats.info',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/__blockbeats/, ''),
+        },
+        '/__gmgn': {
+          target: 'https://openapi.gmgn.ai',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__gmgn/, ''),
+        },
+      },
+    },
+    preview: {
+      proxy: {
+        '/__wechat': {
+          target: 'http://localhost:5678',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/__wechat/, ''),
+        },
+        '/__binance': {
+          target: 'https://api.binance.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__binance/, ''),
+        },
+        '/__binance-bapi': {
+          target: 'https://www.binance.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__binance-bapi/, ''),
+        },
+        '/__blockbeats': {
+          target: 'http://api-pro.theblockbeats.info',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/__blockbeats/, ''),
+        },
+        '/__gmgn': {
+          target: 'https://openapi.gmgn.ai',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/__gmgn/, ''),
+        },
+      },
     },
     build: {
       outDir: 'dist',
