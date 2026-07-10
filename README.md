@@ -1,19 +1,20 @@
-# Crypto Side Screen — 加密副屏
+# Crypto Side Screen — 加密副屏（桌面版）
 
-> 托管在 Vercel，**打开链接即用**——无需安装前端。  
-> 竖向分屏监控面板，专为副屏 / 第二显示器设计。  
-> 每位用户在设置里填入**自己的**数据源参数，数据不经过平台服务器。
+> **当前开发分支：`desktop`**（活跃维护）  
+> Electron 桌面应用，直连本机数据源（含微信 wechat-decrypt、Telegram MTProto 等）。
+
+Web / Vercel 相关工作在 **`web` 分支**，已暂停开发。
 
 ---
 
-## 使用方式（面向所有用户）
+## 本地运行
 
-1. 打开 Vercel 部署链接（或作者提供的网址）
-2. 点击右上角 **设置** 或 **接入向导**
-3. 按提示粘贴服务商给的地址 / API Key
-4. 回到主界面查看实时流
+```bash
+npm install
+npm run dev          # Electron + 热重载
+```
 
-不需要会写代码，不需要本地跑 `npm`。**微信**因涉及本机数据，未来将提供「本机助手」一键配对（开发中）。
+微信后端需在本机单独启动（见设置 / 接入向导）。可选：`npm run dev:all` 同时启动 Electron 与 wechat-decrypt。
 
 ---
 
