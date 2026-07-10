@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "build:web": "tsc -p tsconfig.app.json --noEmit && vite build --mode web",
     "preview": "vite preview",
+    "preview:web": "npm run build:web && vite preview --mode web",
     "electron:pack": "npm run build && electron-builder --dir",
     "electron:dist": "npm run build && electron-builder",
     "electron:dist:mac": "npm run build && electron-builder --mac",
