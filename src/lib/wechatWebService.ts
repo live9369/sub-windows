@@ -3,6 +3,7 @@ import type { WechatBatch, WechatState } from '@/types/cssApi'
 import {
   computeNextSinceTimestamp,
   discoverGroupNames,
+  getWechatWebConnectionIssue,
   groupRawMessagesByChat,
   healthCheck,
   fetchHistory,
@@ -42,7 +43,9 @@ class WechatWebService {
   }
 
   async discover(baseUrl: string): Promise<string[]> {
-    const apiBase = resolveWechatFetchBase(baseUrl, true)
+    const issue = getWechatWebConnectionIssue(baseUrl)
+    if (issue) throw new Error(issue)
+    const apiBase = resolveWechatFetchBase(baseUrl)
     return discoverGroupNames(apiBase)
   }
 
@@ -55,10 +58,17 @@ class WechatWebService {
     }
     this.setState({ state: 'starting' })
 
-    const apiBase = resolveWechatFetchBase(this.cfg.baseUrl, true)
-    const ok = await healthCheck(apiBase)
-    if (!ok) {
+    const issue = getWechatWebConnectionIssue(this.cfg.baseUrl)
+    if (issue) {
+      this.setState({ state: 'error', error: issue })
+      throw new Error(issue)
+    }
+
+    const apiBase = resolveWechatFetchBase(this.cfg.baseUrl)
+    const health = await healthCheck(apiBase)
+    if (!health.ok) {
       const error =
+        health.error ||
         '无法连接到微信解密服务。请确认后端已手动启动；Web 本地开发请使用 http://localhost:5678'
       this.setState({ state: 'error', error })
       throw new Error(error)
@@ -92,7 +102,7 @@ class WechatWebService {
   private async poll() {
     if (!this.running || !this.cfg) return
 
-    const apiBase = resolveWechatFetchBase(this.cfg.baseUrl, true)
+    const apiBase = resolveWechatFetchBase(this.cfg.baseUrl)
     const displayBase = this.cfg.baseUrl
 
     try {

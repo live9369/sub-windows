@@ -34,6 +34,7 @@ import { Switch } from '@/components/ui/switch'
 import type { AppSettings } from '@/types'
 import { useSectionNavigation } from '@/hooks/useSectionNavigation'
 import { isWebRuntime } from '@/lib/runtimeBridge'
+import { isRemoteWebHost, shouldUseWechatDevProxy } from '@/lib/wechatApi'
 
 export interface SettingsModalProps {
   open: boolean
@@ -312,6 +313,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     : { label: '未启用', variant: 'muted' as const }
 
   const webRuntime = isWebRuntime()
+  const wechatDevProxy = shouldUseWechatDevProxy()
+  const wechatRemoteHost = isRemoteWebHost()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -546,8 +549,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             title="微信监控（可用链路）"
             subtitle={
               webRuntime
-                ? 'Web 版已支持：浏览器直连本机 wechat-decrypt（开发模式经 Vite 代理）。'
-                : '桌面版已可用：连接你手动启动的本机 wechat-decrypt 服务。'
+                ? wechatDevProxy
+                  ? 'Web 本地开发：经 Vite /__wechat 代理连接本机 wechat-decrypt。'
+                  : 'Web 线上环境：无法直连 localhost，需 HTTPS 隧道地址或改用桌面版。'
+                : '桌面版：连接你手动启动的本机 wechat-decrypt 服务。'
             }
             source="本机 wechat-decrypt HTTP API（例如 http://localhost:5678）"
             statusLabel={wxStatusUi.label}
@@ -555,7 +560,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             <div className="rounded-lg border border-amber-700/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-200">
               {webRuntime
-                ? 'Web 本地开发：请先启动 wechat-decrypt，服务地址保持 http://localhost:5678；前端会通过 /__wechat 代理避免 CORS。'
+                ? wechatDevProxy
+                  ? '本地开发：先启动 wechat-decrypt，地址保持 http://localhost:5678；前端经 /__wechat 代理避免 CORS。'
+                  : wechatRemoteHost
+                    ? 'Vercel 等线上部署没有 /__wechat 代理，且 HTTPS 页面不能请求本机 HTTP。请用 ngrok 等暴露 HTTPS 地址，或改用桌面版 / npm run dev:web。'
+                    : '请确认 wechat-decrypt 已启动，且服务地址可从当前页面访问。'
                 : '微信链路涉及本地解密与隐私数据，建议仅在本机运行服务并通过 localhost 接入。'}
             </div>
 
