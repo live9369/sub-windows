@@ -10,7 +10,7 @@ import { useWechatMessages } from '@/hooks/useWechatMessages'
 import { useBinancePrices } from '@/hooks/useBinancePrices'
 import { useBlockbeatsNews } from '@/hooks/useBlockbeatsNews'
 import { useTwitterStream } from '@/hooks/useTwitterStream'
-import { useBinanceSquareFeed } from '@/hooks/useBinanceSquareFeed'
+import { useBinanceSquareFeed } from './hooks/useBinanceSquareFeed'
 import { useTelegramMessages } from '@/hooks/useTelegramMessages'
 import { useTelegramBotPush } from '@/hooks/useTelegramBotPush'
 import {
@@ -28,13 +28,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   telegramBotPushUrl: '',
   wechatEnabled: false,
   wechatBaseUrl: 'http://localhost:5678',
-  wechatPythonPath: '',
-  wechatScriptPath: 'vendor/wechat-decrypt/main.py',
-  wechatGroups: '',
   wechatPollIntervalMs: 3000,
   telegramApiId: 0,
   telegramApiHash: '',
-  telegramSessionPath: '',
   telegramPhone: '',
   tokenPresets: '',
   blockbeatsEnabled: false,
@@ -96,8 +92,6 @@ export default function App() {
     enabled: settings.wechatEnabled,
     baseUrl: settings.wechatBaseUrl,
     pollIntervalMs: settings.wechatPollIntervalMs,
-    pythonPath: settings.wechatPythonPath,
-    scriptPath: settings.wechatScriptPath,
   })
 
   const telegram = useTelegramMessages({

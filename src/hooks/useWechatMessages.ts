@@ -8,12 +8,10 @@ export interface UseWechatMessagesOptions {
   enabled: boolean
   baseUrl: string
   pollIntervalMs: number
-  pythonPath?: string
-  scriptPath?: string
 }
 
 export function useWechatMessages(options: UseWechatMessagesOptions) {
-  const { enabled, baseUrl, pollIntervalMs, pythonPath, scriptPath } = options
+  const { enabled, baseUrl, pollIntervalMs } = options
 
   const [discoveredGroups, setDiscoveredGroups] = React.useState<MonitoredGroup[]>([])
   const [messagesByGroup, setMessagesByGroup] = React.useState<Record<string, ChatMessage[]>>({})
@@ -27,7 +25,6 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
       await window.cssApi!.wechatStart({
         baseUrl,
         pollIntervalMs,
-        spawn: pythonPath && scriptPath ? { pythonPath, scriptPath } : undefined,
       })
       setStatus('connected')
       // Discover groups after successful connection
@@ -42,7 +39,7 @@ export function useWechatMessages(options: UseWechatMessagesOptions) {
       setError(msg)
       setStatus('error')
     }
-  }, [baseUrl, pollIntervalMs, pythonPath, scriptPath])
+  }, [baseUrl, pollIntervalMs])
 
   const stop = React.useCallback(() => {
     window.cssApi!.wechatStop()

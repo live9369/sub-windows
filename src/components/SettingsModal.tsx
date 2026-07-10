@@ -7,8 +7,6 @@ import {
   Timer,
   MessageCircle,
   Server,
-  Terminal,
-  FileCode,
   Loader2,
   Plug,
   User,
@@ -20,7 +18,6 @@ import {
   Wifi,
   Coins,
   Database,
-  ExternalLink,
   CircleDot,
 } from 'lucide-react'
 import {
@@ -118,6 +115,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const [starting, setStarting] = React.useState(false)
   const [startError, setStartError] = React.useState<string | null>(null)
+  const [startSuccess, setStartSuccess] = React.useState<string | null>(null)
 
   // Telegram user client state
   const [tgConnecting, setTgConnecting] = React.useState(false)
@@ -144,6 +142,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (open) {
       setDraft(settings)
       setStartError(null)
+      setStartSuccess(null)
     }
   }, [open, settings])
 
@@ -158,11 +157,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleTestConnection = async () => {
     setStarting(true)
     setStartError(null)
+    setStartSuccess(null)
     try {
       await window.cssApi!.wechatStart({
         baseUrl: draft.wechatBaseUrl || 'http://localhost:5678',
         pollIntervalMs: Number(draft.wechatPollIntervalMs) || 3000,
       })
+      setStartSuccess('连接成功：当前地址可用。')
     } catch (err: any) {
       setStartError(err?.message || '连接失败')
     } finally {
@@ -249,6 +250,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     ? { label: '连接异常', variant: 'red' as const }
     : starting
       ? { label: '测试中', variant: 'cyan' as const }
+      : startSuccess
+        ? { label: '连接正常', variant: 'neon' as const }
       : draft.wechatEnabled
         ? { label: '已启用', variant: 'amber' as const }
         : { label: '未启用', variant: 'muted' as const }
@@ -514,7 +517,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <FieldRow
               icon={<MessageCircle className="w-3.5 h-3.5" />}
               label="启用微信监控"
-              hint="开启后主进程自动连接 localhost:5678"
+              hint="开启后主进程连接你已手动启动的服务"
             >
               <div className="flex items-center h-8">
                 <Switch
@@ -527,7 +530,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <FieldRow
               icon={<Server className="w-3.5 h-3.5" />}
               label="服务地址"
-              hint="wechat-decrypt HTTP API"
+              hint="wechat-decrypt HTTP API（需你手动启动）"
             >
               <Input
                 placeholder="http://localhost:5678"
@@ -536,53 +539,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </FieldRow>
 
-            <details className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-2">
-              <summary className="cursor-pointer text-xs text-zinc-300 flex items-center gap-1">
-                <ExternalLink className="w-3 h-3 inline" />
-                高级配置（仅本地代启模式需要）
-              </summary>
-              <div className="mt-2 space-y-3">
-                <FieldRow
-                  icon={<Terminal className="w-3.5 h-3.5" />}
-                  label="Python 路径"
-                  hint="系统 python / python3 或绝对路径"
-                >
-                  <Input
-                    placeholder={window.cssApi?.platform === 'win32' ? 'python' : 'python3'}
-                    value={draft.wechatPythonPath}
-                    onChange={(e) => update('wechatPythonPath', e.target.value)}
-                  />
-                </FieldRow>
-
-                <FieldRow
-                  icon={<FileCode className="w-3.5 h-3.5" />}
-                  label="脚本路径"
-                  hint="wechat-decrypt/main.py"
-                >
-                  <Input
-                    placeholder="vendor/wechat-decrypt/main.py"
-                    value={draft.wechatScriptPath}
-                    onChange={(e) => update('wechatScriptPath', e.target.value)}
-                  />
-                </FieldRow>
-
-                <FieldRow
-                  icon={<Timer className="w-3.5 h-3.5" />}
-                  label="轮询间隔（毫秒）"
-                  hint="主进程轮询 /api/history 频率"
-                >
-                  <Input
-                    type="number"
-                    min={500}
-                    max={30000}
-                    value={draft.wechatPollIntervalMs}
-                    onChange={(e) =>
-                      update('wechatPollIntervalMs', Number(e.target.value) || 3000)
-                    }
-                  />
-                </FieldRow>
-              </div>
-            </details>
+            <FieldRow
+              icon={<Timer className="w-3.5 h-3.5" />}
+              label="轮询间隔（毫秒）"
+              hint="主进程轮询 /api/history 频率"
+            >
+              <Input
+                type="number"
+                min={500}
+                max={30000}
+                value={draft.wechatPollIntervalMs}
+                onChange={(e) =>
+                  update('wechatPollIntervalMs', Number(e.target.value) || 3000)
+                }
+              />
+            </FieldRow>
 
             <div className="pt-1">
               <Button
@@ -600,6 +571,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </Button>
               {startError && (
                 <p className="mt-1.5 text-[11px] text-rose-400">{startError}</p>
+              )}
+              {startSuccess && (
+                <p className="mt-1.5 text-[11px] text-emerald-400">{startSuccess}</p>
               )}
             </div>
           </DataSourceCard>

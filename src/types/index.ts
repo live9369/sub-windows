@@ -85,13 +85,9 @@ export interface AppSettings {
   telegramBotPushUrl: string
   wechatEnabled: boolean
   wechatBaseUrl: string
-  wechatPythonPath: string
-  wechatScriptPath: string
-  wechatGroups: string
   wechatPollIntervalMs: number
   telegramApiId: number
   telegramApiHash: string
-  telegramSessionPath: string
   telegramPhone: string
   tokenPresets: string
   blockbeatsEnabled: boolean
