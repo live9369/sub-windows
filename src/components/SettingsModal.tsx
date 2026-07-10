@@ -146,6 +146,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [open, settings])
 
+  React.useEffect(() => {
+    if (!open) return
+    const syncTgState = (state: string, error?: string) => {
+      setTgStatus(state)
+      setTgNeedCode(state === 'waiting_code')
+      setTgNeedPassword(state === 'waiting_password')
+      if (error) setTgError(error)
+    }
+
+    window.cssApi!.telegramStatus()
+      .then((state) => syncTgState(state.state, state.error))
+      .catch(() => {})
+
+    const unsubStatus = window.cssApi!.onTelegramStatusChange((state) => {
+      syncTgState(state.state, state.error)
+    })
+    const unsubNeedCode = window.cssApi!.onTelegramNeedCode(() => {
+      syncTgState('waiting_code')
+    })
+    const unsubNeedPassword = window.cssApi!.onTelegramNeedPassword(() => {
+      syncTgState('waiting_password')
+    })
+
+    return () => {
+      unsubStatus()
+      unsubNeedCode()
+      unsubNeedPassword()
+    }
+  }, [open])
+
   const update = <K extends keyof AppSettings>(k: K, v: AppSettings[K]) =>
     setDraft((d) => ({ ...d, [k]: v }))
 
@@ -505,7 +535,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div id="settings-wechat">
           <DataSourceCard
             title="微信监控（本地敏感数据）"
-            subtitle="仅支持本地后端，不建议部署到远程服务。"
+            subtitle="桌面版优先：仅支持本地后端，不建议部署到远程服务。"
             source="本机 wechat-decrypt HTTP API（默认 localhost:5678）"
             statusLabel={wxStatusUi.label}
             statusVariant={wxStatusUi.variant}
